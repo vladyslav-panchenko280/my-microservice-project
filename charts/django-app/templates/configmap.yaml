@@ -1,0 +1,16 @@
+{{- $root := . -}}
+{{- with .Values.configMap }}
+{{- if .data }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "django-app.fullname" $root }}-config
+  labels:
+    {{- include "django-app.labels" $root | nindent 4 }}
+data:
+  {{- range $key, $value := .data }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}
+

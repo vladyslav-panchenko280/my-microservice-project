@@ -1,0 +1,83 @@
+# Staging environment values
+replicaCount: 2
+
+image:
+  repository: 625041985844.dkr.ecr.us-east-1.amazonaws.com/es-ecr-stage
+  pullPolicy: Always
+  tag: "stage-latest"
+
+service:
+  type: LoadBalancer
+  port: 8000
+
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+  hosts:
+    - host: stage.django-app.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: django-app-stage-tls
+      hosts:
+        - stage.django-app.example.com
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+configMap:
+  data:
+    DJANGO_SETTINGS_MODULE: django_app.settings
+    DEBUG: "False"
+    ENVIRONMENT: stage
+    ALLOWED_HOSTS: "stage.django-app.example.com"
+
+env:
+  - name: DATABASE_URL
+    valueFrom:
+      secretKeyRef:
+        name: django-db-secret
+        key: database-url
+
+postgresql:
+  enabled: false
+
+nginx:
+  enabled: true
+  image:
+    repository: nginx
+    tag: "1.25-alpine"
+  config: |
+    server {
+      listen 80;
+      server_name stage.django-app.example.com;
+      
+      location / {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      }
+      
+      location /static/ {
+        alias /app/staticfiles/;
+      }
+    }
+
