@@ -17,3 +17,11 @@ output "eks_cluster_certificate_authority_data" {
   description = "Base64 encoded certificate authority data for the EKS cluster"
   value       = aws_eks_cluster.eks.certificate_authority[0].data
 }
+
+output "oidc_provider_arn" {
+  value = aws_iam_openid_connect_provider.oidc.arn
+}
+
+output "oidc_provider_url" {
+  value = aws_iam_openid_connect_provider.oidc.url
+}

@@ -1,0 +1,60 @@
+# Production environment overrides
+environment: production
+
+jenkins:
+  controller:
+    admin:
+      username: admin
+
+    resources:
+      limits:
+        cpu: "2000m"
+        memory: "4Gi"
+      requests:
+        cpu: "1000m"
+        memory: "2Gi"
+
+    persistentVolume:
+      size: 50Gi
+
+    # Enable backup for production
+    backup:
+      enabled: true
+      schedule: "H 2 * * *"
+
+    JCasC:
+      configScripts:
+        security: |
+          jenkins:
+            securityRealm:
+              local:
+                allowsSignup: false
+            authorizationStrategy:
+              loggedInUsersCanDoAnything:
+                allowAnonymousRead: false
+
+        seed-job: |
+          jobs:
+            - script: >
+                folder('production') {
+                  displayName('Production Jobs')
+                  description('Jobs for production environment - handle with care')
+                }
+
+                pipelineJob('production/django-app-deploy') {
+                  description('Deploy Django application to production')
+                  definition {
+                    cpsScm {
+                      scm {
+                        git {
+                          remote {
+                            url("https://github.com/vladyslav-panchenko280/django-app.git")
+                            credentials("github-token")
+                          }
+                          branches("*/main")
+                        }
+                      }
+                      scriptPath("services/django-app/Jenkinsfile")
+                    }
+                  }
+                }

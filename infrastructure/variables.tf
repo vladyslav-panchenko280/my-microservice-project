@@ -86,3 +86,23 @@ variable "single_nat_gateway" {
   default     = false
 }
 
+variable "jenkins_github_username" {
+  description = "GitHub username for Jenkins CI/CD"
+  type        = string
+  default     = ""
+}
+
+variable "jenkins_github_token" {
+  description = "GitHub personal access token for Jenkins CI/CD"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "jenkins_admin_password" {
+  description = "Admin password for Jenkins (use only for dev, use secrets for staging/prod)"
+  type        = string
+  sensitive   = true
+  default     = "admin123"
+}
+

@@ -4,29 +4,14 @@ replicaCount: 2
 image:
   repository: 625041985844.dkr.ecr.us-east-1.amazonaws.com/es-ecr-stage
   pullPolicy: Always
-  tag: "stage-latest"
+  tag: "django-stage"
 
 service:
   type: LoadBalancer
   port: 8000
 
 ingress:
-  enabled: true
-  className: "alb"
-  annotations:
-    kubernetes.io/ingress.class: alb
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/ssl-redirect: "443"
-  hosts:
-    - host: stage.django-app.example.com
-      paths:
-        - path: /
-          pathType: Prefix
-  tls:
-    - secretName: django-app-stage-tls
-      hosts:
-        - stage.django-app.example.com
+  enabled: false
 
 resources:
   limits:
@@ -47,7 +32,7 @@ configMap:
     DJANGO_SETTINGS_MODULE: django_app.settings
     DEBUG: "False"
     ENVIRONMENT: stage
-    ALLOWED_HOSTS: "stage.django-app.example.com"
+    ALLOWED_HOSTS: "*"  # LoadBalancer DNS name will be dynamic
 
 env:
   - name: DATABASE_URL
@@ -67,15 +52,15 @@ nginx:
   config: |
     server {
       listen 80;
-      server_name stage.django-app.example.com;
-      
+      server_name _;
+
       location / {
         proxy_pass http://localhost:8000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
       }
-      
+
       location /static/ {
         alias /app/staticfiles/;
       }

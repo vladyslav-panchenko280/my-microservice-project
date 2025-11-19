@@ -1,0 +1,49 @@
+environment: dev
+
+jenkins:
+  controller:
+    admin:
+      username: admin
+      password: admin123
+
+    resources:
+      limits:
+        cpu: "500m"
+        memory: "1Gi"
+      requests:
+        cpu: "250m"
+        memory: "512Mi"
+
+    persistentVolume:
+      size: 10Gi
+
+    JCasC:
+      configScripts:
+        seed-job: |
+          jobs:
+            - script: >
+                folder('development') {
+                  displayName('Development Jobs')
+                  description('Jobs for development environment')
+                }
+
+                pipelineJob('development/django-app-build') {
+                  description('Build Django application for development')
+                  definition {
+                    cpsScm {
+                      scm {
+                        git {
+                          remote {
+                            url("https://github.com/vladyslav-panchenko280/django-app.git")
+                            credentials("github-token")
+                          }
+                          branches("*/dev")
+                        }
+                      }
+                      scriptPath("services/django-app/Jenkinsfile")
+                    }
+                  }
+                  triggers {
+                    pollSCM('H/5 * * * *')
+                  }
+                }
