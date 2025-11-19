@@ -1,0 +1,38 @@
+# Development Environment Configuration
+environment = "dev"
+
+# Backend configuration
+backend_bucket = "your-terraform-state-bucket-dev"
+backend_key    = "dev/terraform.tfstate"
+
+# VPC Configuration
+vpc_cidr_block     = "10.0.0.0/16"
+vpc_name           = "eks-vpc-dev"
+single_nat_gateway = true # Cost optimization for dev
+
+public_subnets  = ["10.0.1.0/24", "10.0.2.0/24"]
+private_subnets = ["10.0.10.0/24", "10.0.11.0/24"]
+availability_zones = ["us-east-1a", "us-east-1b"]
+
+# ECR Configuration
+ecr_name     = "django-app-dev"
+scan_on_push = true
+
+# EKS Configuration
+cluster_name  = "eks-cluster-dev"
+instance_type = "t3.medium"
+desired_size  = 2
+max_size      = 3
+min_size      = 1
+
+# Jenkins Configuration
+jenkins_github_username    = "your-github-username"
+jenkins_github_token       = "ghp_your_github_token_here"
+jenkins_admin_password     = "admin123"
+
+# Tags
+tags = {
+  Environment = "dev"
+  Project     = "enterprise-suite"
+  ManagedBy   = "Terraform"
+}

@@ -53,11 +53,11 @@ print_step() {
 }
 
 print_check() {
-    echo -e "${GREEN}✓${NC} $*"
+    echo -e "${GREEN}${NC} $*"
 }
 
 print_cross() {
-    echo -e "${RED}✗${NC} $*"
+    echo -e "${RED}${NC} $*"
 }
 
 print_arrow() {

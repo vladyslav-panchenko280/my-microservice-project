@@ -45,25 +45,46 @@ aws ecr get-login-password --region ${AWS_REGION} | \
 # Build and push Django app
 build_django() {
     print_subsection "Building Django app"
-    
+
     cd services/django-app/django_app
-    
+
+    # Select environment-specific Dockerfile
+    case $ENV in
+        dev)
+            DOCKERFILE="Dev.Dockerfile"
+            ;;
+        stage)
+            DOCKERFILE="Stage.Dockerfile"
+            ;;
+        prod)
+            DOCKERFILE="Prod.Dockerfile"
+            ;;
+    esac
+
+    print_info "Using Dockerfile: ${DOCKERFILE}"
+
     # Build image
     print_step "Building Docker image..."
-    docker build -t django-app:${ENV} .
-    
+    docker build \
+        -f ${DOCKERFILE} \
+        -t django-app:${ENV} \
+        --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+        --build-arg VCS_REF=$(git rev-parse --short HEAD) \
+        --build-arg VERSION=${ENV}-$(git rev-parse --short HEAD) \
+        .
+
     # Tag for ECR
     print_step "Tagging images..."
     docker tag django-app:${ENV} ${ECR_REGISTRY}/${ECR_REPO}:django-${ENV}
     docker tag django-app:${ENV} ${ECR_REGISTRY}/${ECR_REPO}:django-${ENV}-$(git rev-parse --short HEAD)
-    
+
     # Push to ECR
     print_step "Pushing Django image to ECR..."
     docker push ${ECR_REGISTRY}/${ECR_REPO}:django-${ENV}
     docker push ${ECR_REGISTRY}/${ECR_REPO}:django-${ENV}-$(git rev-parse --short HEAD)
-    
+
     print_check "Django app pushed successfully"
-    
+
     cd ../../..
 }
 

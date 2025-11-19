@@ -1,43 +1,123 @@
-# My Microservice Project Deployment Guide
+# Enterprise Suite Infrastructure
 
-A concise reference for provisioning infrastructure, building images, and deploying the Django application across development, staging, production, and local environments.
+A comprehensive infrastructure setup for deploying Django applications across development, staging, and production environments using AWS EKS, Jenkins CI/CD, and Kubernetes.
+
+## Architecture Overview
+
+This project implements a complete GitOps workflow with:
+- **Infrastructure as Code**: Terraform manages AWS resources (VPC, EKS, ECR)
+- **Container Orchestration**: Kubernetes on AWS EKS
+- **CI/CD Pipeline**: Jenkins with automated builds and deployments
+- **Environment-Specific Builds**: Separate Dockerfiles for dev/stage/prod
+- **Image Registry**: AWS ECR with environment-specific repositories
+- **Service Exposure**: LoadBalancer for direct access (no domain required)
 
 ## Project Structure
 
 ```
-my-microservice-project/
-├── infrastructure/              # Terraform configuration
+enterprise-suite-infrastructure/
+├── infrastructure/              # Terraform IaC
 │   ├── environments/
-│   │   ├── dev/                # Dev environment
+│   │   ├── dev/                # Development environment
 │   │   │   ├── backend.hcl
 │   │   │   └── terraform.tfvars
-│   │   ├── stage/              # Stage environment
+│   │   ├── stage/              # Staging environment
 │   │   │   ├── backend.hcl
 │   │   │   └── terraform.tfvars
-│   │   └── prod/               # Prod environment
+│   │   └── prod/               # Production environment
 │   │       ├── backend.hcl
 │   │       └── terraform.tfvars
-│   ├── modules/                # Terraform modules
+│   ├── modules/
+│   │   ├── vpc/                # VPC with public/private subnets
+│   │   ├── ecr/                # Container registry
+│   │   ├── eks/                # Kubernetes cluster + EBS CSI driver
+│   │   └── jenkins/            # Jenkins with IRSA for ECR access
 │   ├── main.tf
 │   ├── variables.tf
+│   ├── outputs.tf
 │   └── backend.tf
 ├── charts/                      # Helm charts
+│   ├── django-app/             # Application deployment
+│   │   ├── values.yaml         # Base configuration
+│   │   ├── values-dev.yaml     # Dev overrides
+│   │   ├── values-stage.yaml   # Stage overrides
+│   │   └── values-prod.yaml    # Prod overrides
+│   └── jenkins/                # Jenkins deployment
+│       ├── values.yaml         # Base configuration
+│       ├── values-dev.yaml     # Dev jobs
+│       ├── values-stage.yaml   # Stage jobs
+│       └── values-prod.yaml    # Prod jobs
+├── services/
 │   └── django-app/
-│       ├── values.yaml         # Base values
-│       ├── values-dev.yaml     # Dev configuration
-│       ├── values-stage.yaml   # Stage configuration
-│       └── values-prod.yaml    # Prod configuration
-├── services/                    # Microservices
-│   └── django-app/
-│       ├── django_app/         # Django code
-│       ├── nginx/              # Nginx configuration
+│       ├── django_app/         # Django application
+│       │   ├── Dev.Dockerfile  # Development build
+│       │   ├── Stage.Dockerfile # Staging build (multi-stage)
+│       │   ├── Prod.Dockerfile  # Production build (multi-stage)
+│       │   └── requirements.txt
+│       ├── nginx/              # Nginx reverse proxy
+│       ├── Jenkinsfile         # CI/CD pipeline definition
 │       └── docker-compose.yml  # Local development
-└── scripts/                     # Automation
+└── scripts/                     # Automation scripts
     ├── terraform-apply.sh      # Apply Terraform
-    ├── build-and-push.sh       # Build and push images
-    ├── deploy.sh               # Deploy to Kubernetes
-    └── setup-environment.sh    # Full environment setup
+    ├── build-and-push.sh       # Build and push to ECR
+    ├── deploy.sh               # Deploy via Helm
+    └── setup-environment.sh    # Complete environment setup
 ```
+
+## Image Tagging Strategy
+
+Images are tagged consistently across all environments:
+- Development: `django-dev`
+- Staging: `django-stage`
+- Production: `django-prod`
+
+This tagging is used by:
+- `build-and-push.sh` script
+- Jenkins pipeline
+- Helm values files (`values-{env}.yaml`)
+
+## CI/CD Pipeline (Jenkins)
+
+### Pipeline Flow
+
+The Jenkinsfile implements a complete GitOps workflow:
+
+1. **Determine Environment**: Auto-detects environment based on Git branch
+   - `dev` branch → Dev environment → `Dev.Dockerfile`
+   - `stage` branch → Stage environment → `Stage.Dockerfile`
+   - `main` branch → Prod environment → `Prod.Dockerfile`
+
+2. **Checkout**: Clones the django-app repository
+
+3. **Build Docker Image**: Builds using environment-specific Dockerfile
+   - Uses AWS ECR for image storage
+   - Tags image with `django-{env}` format
+
+4. **Push to ECR**: Pushes built image to AWS ECR repository
+
+5. **Update Deployment Repo**: Updates Helm values file with new image tag
+   - Clones current branch from django-app repo
+   - Updates `charts/django-app/values-{env}.yaml`
+   - Commits and pushes changes back to the same branch
+
+6. **Deploy to EKS**: Deploys application via Helm
+
+### Jenkins Configuration
+
+Jenkins is deployed via Terraform with:
+- **Service Account**: `jenkins-sa` with IRSA (IAM Roles for Service Accounts)
+- **ECR Permissions**: Full access to push/pull images
+- **Persistent Storage**: EBS volumes via AWS EBS CSI driver
+- **Jobs**: Configured via Helm values files per environment
+
+### Repository Structure
+
+- **Infrastructure Repo**: `vladyslav-panchenko280/enterprise-suite-infrastructure`
+  - Contains Terraform, Helm charts, scripts
+
+- **Application Repo**: `vladyslav-panchenko280/django-app`
+  - Contains Django code, Dockerfiles, Jenkinsfile
+  - Branches: `dev`, `stage`, `main`
 
 ## Prerequisites
 
@@ -47,6 +127,7 @@ my-microservice-project/
 4. kubectl for Kubernetes operations
 5. Helm ≥ 3.0 for deploying charts
 6. Git for version control
+7. AWS Account ID and configured ECR repositories
 
 ## Quick Start
 
@@ -72,9 +153,17 @@ aws s3api put-bucket-encryption \
   }'
 ```
 
-### 2. Full environment setup (recommended)
+### 2. Configure environment-specific variables
 
-The fastest way is to run the convenience script:
+Edit `infrastructure/environments/{env}/terraform.tfvars`:
+
+```hcl
+# Update these values
+jenkins_github_username = "your-github-username"
+jenkins_github_token     = "ghp_your_github_token_here"
+```
+
+### 3. Full environment setup (recommended)
 
 ```bash
 # Dev environment
@@ -92,9 +181,7 @@ This script automatically:
 2. Builds and pushes Docker images to ECR
 3. Deploys the application to Kubernetes
 
-### 3. Step-by-step setup (alternative)
-
-If you prefer more control, execute each step manually.
+### 4. Step-by-step setup (alternative)
 
 #### Step 1: Apply Terraform
 
@@ -109,16 +196,28 @@ If you prefer more control, execute each step manually.
 ./scripts/terraform-apply.sh prod
 ```
 
+This creates:
+- VPC with public/private subnets
+- EKS cluster with node groups
+- ECR repositories (es-ecr-dev, es-ecr-stage, es-ecr-prod)
+- Jenkins with IRSA permissions
+
 #### Step 2: Build and push Docker images
 
+The script automatically selects the correct Dockerfile per environment:
+
 ```bash
-# Build all services for dev
+# Build for dev (uses Dev.Dockerfile)
 ./scripts/build-and-push.sh dev
 
-# Only Django
-./scripts/build-and-push.sh dev django-app
+# Build for stage (uses Stage.Dockerfile)
+./scripts/build-and-push.sh stage
 
-# Only Nginx
+# Build for prod (uses Prod.Dockerfile)
+./scripts/build-and-push.sh prod
+
+# Build specific service
+./scripts/build-and-push.sh dev django-app
 ./scripts/build-and-push.sh dev nginx
 ```
 
@@ -135,41 +234,41 @@ If you prefer more control, execute each step manually.
 ./scripts/deploy.sh prod
 ```
 
-## Local Development
+## Accessing the Application
 
-Use Docker Compose for local workflows:
+### Without Domain (LoadBalancer)
+
+The application is exposed via AWS LoadBalancer:
 
 ```bash
-cd services/django-app
+# Get LoadBalancer URL
+kubectl get svc -n django-dev django-app -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
 
-# Create .env
-cat > .env <<EOF
-POSTGRES_DB=django_dev
-POSTGRES_USER=django
-POSTGRES_PASSWORD=devpassword
-DATABASE_URL=postgresql://django:devpassword@db:5432/django_dev
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-EOF
+# Example output:
+# a1234567890abcdef-1234567890.us-east-1.elb.amazonaws.com
 
-# Start services
-docker-compose up -d
-
-# Tail logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
+# Access the application
+curl http://a1234567890abcdef-1234567890.us-east-1.elb.amazonaws.com
 ```
 
-Application endpoints:
-- Django: http://localhost:8000
-- Nginx: http://localhost:80
-- PostgreSQL: localhost:5432
+### Configuration Details
+
+Since we don't have a domain:
+- **Ingress**: Disabled (`ingress.enabled: false`)
+- **Service Type**: LoadBalancer
+- **ALLOWED_HOSTS**: Set to `"*"` (accepts any hostname)
+- **Nginx server_name**: Set to `_` (wildcard, accepts all)
+
+### Port Forwarding for Testing
+
+```bash
+kubectl port-forward -n django-dev svc/django-app 8000:8000
+# Application now available at http://localhost:8000
+```
 
 ## Managing Environments
 
-### Inspect status
+### Inspect Status
 
 ```bash
 # Kubernetes pods
@@ -177,68 +276,96 @@ kubectl get pods -n django-dev
 kubectl get pods -n django-stage
 kubectl get pods -n django-prod
 
-# Services
+# Services and LoadBalancer
 kubectl get svc -n django-dev
 
-# Ingress
-kubectl get ingress -n django-dev
+# Deployments
+kubectl get deployments -n django-dev
+
+# Get LoadBalancer URL
+kubectl get svc -n django-dev django-app \
+  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
 ```
 
-### Review logs
+### Review Logs
 
 ```bash
-# All pods
+# All pods with label selector
 kubectl logs -f -n django-dev -l app.kubernetes.io/name=django-app
 
 # Specific pod
 kubectl logs -f -n django-dev <pod-name>
 
-# Specific container
+# Specific container in pod
 kubectl logs -f -n django-dev <pod-name> -c django-app
+
+# Previous container logs (for crashed pods)
+kubectl logs -n django-dev <pod-name> --previous
 ```
 
-### Port forwarding for testing
+### Updating the Application
+
+#### Manual Update
 
 ```bash
-kubectl port-forward -n django-dev svc/django-app 8000:8000
-# Application now available at http://localhost:8000
-```
-
-### Updating the application
-
-```bash
-# 1. Modify code
-# 2. Build a new image
+# 1. Modify code in django-app repo
+# 2. Build new image
 ./scripts/build-and-push.sh dev
 
-# 3. Roll out the update
+# 3. Update Helm values with new tag
+# Edit charts/django-app/values-dev.yaml
+
+# 4. Deploy
 ./scripts/deploy.sh dev
+```
+
+#### Via Jenkins (GitOps)
+
+```bash
+# 1. Commit code changes to django-app repo
+git add .
+git commit -m "Update feature X"
+git push origin dev
+
+# 2. Jenkins automatically:
+#    - Detects branch (dev)
+#    - Builds with Dev.Dockerfile
+#    - Pushes to ECR as django-dev
+#    - Updates values-dev.yaml
+#    - Deploys to EKS dev namespace
 ```
 
 ### Rollback
 
 ```bash
-# Release history
+# View release history
 helm history django-app -n django-dev
 
-# Roll back to previous
+# Roll back to previous release
 helm rollback django-app -n django-dev
 
-# Roll back to a specific revision
+# Roll back to specific revision
 helm rollback django-app 2 -n django-dev
 ```
 
 ## Managing Secrets
 
-### Database secrets (stage/prod)
+### GitHub Credentials for Jenkins
+
+Configured via Terraform variables in `terraform.tfvars`:
+
+```hcl
+jenkins_github_username = "your-username"
+jenkins_github_token    = "ghp_token_here"
+```
+
+### Database Secrets (Stage/Prod)
 
 ```bash
-# Stage
 kubectl create secret generic django-db-secret \
   --from-literal=database-url="postgresql://user:password@rds-endpoint:5432/dbname" \
   --namespace=django-stage
 
-# Prod
 kubectl create secret generic django-db-secret \
   --from-literal=database-url="postgresql://user:password@rds-endpoint:5432/dbname" \
   --namespace=django-prod
@@ -247,12 +374,10 @@ kubectl create secret generic django-db-secret \
 ### Django SECRET_KEY
 
 ```bash
-# Generate
 token=$(python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')
 
 echo $token
 
-# Store
 kubectl create secret generic django-secret \
   --from-literal=secret-key="$token" \
   --namespace=django-prod
@@ -260,13 +385,13 @@ kubectl create secret generic django-secret \
 
 ## Monitoring and Troubleshooting
 
-### Exec into a pod
+### Exec into a Pod
 
 ```bash
 kubectl exec -it -n django-dev <pod-name> -- /bin/bash
 ```
 
-### Django management commands
+### Django Management Commands
 
 ```bash
 # Migrations
@@ -279,77 +404,96 @@ kubectl exec -it -n django-dev <pod-name> -- python manage.py createsuperuser
 kubectl exec -it -n django-dev <pod-name> -- python manage.py collectstatic --noinput
 ```
 
-### Resource usage
+### Jenkins Access
 
 ```bash
-# CPU & memory
-kubectl top pods -n django-dev
-kubectl top nodes
+# Get Jenkins admin password
+kubectl get secret -n jenkins jenkins-dev-admin-password \
+  -o jsonpath='{.data.password}' | base64 -d
 
-# Pod description
-kubectl describe pod -n django-dev <pod-name>
+# Port forward to Jenkins
+kubectl port-forward -n jenkins svc/jenkins-dev 8080:8080
 
-# Recent events
-kubectl get events -n django-dev --sort-by='.lastTimestamp'
+# Access Jenkins at http://localhost:8080
 ```
-
-## Environment Comparison
-
-| Parameter             | Dev          | Stage        | Prod          |
-|-----------------------|--------------|--------------|---------------|
-| Replicas              | 1            | 2            | 3             |
-| Autoscaling           | Disabled     | 2-5 pods     | 3-10 pods     |
-| Resources (CPU)       | 250m-500m    | 500m-1000m   | 1000m-2000m   |
-| Resources (Memory)    | 256Mi-512Mi  | 512Mi-1Gi    | 1Gi-2Gi       |
-| Debug mode            | Enabled      | Disabled     | Disabled      |
-| PostgreSQL            | In-cluster   | RDS          | RDS           |
-| SSL/TLS               | Optional     | Required     | Required      |
-| Backup cadence        | None         | Daily        | Hourly        |
 
 ## Cleaning Up
 
-### Remove application
+### Remove Application
 
 ```bash
+# Uninstall Helm release
 helm uninstall django-app -n django-dev
+
+# Delete namespace
 kubectl delete namespace django-dev
 ```
 
-### Destroy infrastructure
+### Destroy Infrastructure
 
 ```bash
 cd infrastructure
 
+# Initialize Terraform
 terraform init -backend-config=environments/dev/backend.hcl -reconfigure
+
+# Destroy resources
 terraform destroy -var-file=environments/dev/terraform.tfvars
 ```
 
-## Troubleshooting
-
-### Pod fails to start
+### Delete ECR Images
 
 ```bash
-kubectl describe pod -n django-dev <pod-name>
-kubectl logs -n django-dev <pod-name>
-kubectl get events -n django-dev
+# List images
+aws ecr list-images --repository-name es-ecr-dev --region us-east-1
+
+# Delete all images in repository
+aws ecr batch-delete-image \
+  --repository-name es-ecr-dev \
+  --region us-east-1 \
+  --image-ids "$(aws ecr list-images --repository-name es-ecr-dev --region us-east-1 --query 'imageIds[*]' --output json)" || true
 ```
 
-### ECR issues
+## Jenkins Pipeline Details
 
-```bash
-aws ecr get-login-password --region us-east-1 | \
-  docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com
+### Environment Detection
 
-aws ecr describe-repositories --region us-east-1
-aws ecr describe-images --repository-name es-ecr-dev --region us-east-1
+```groovy
+if (branch == 'main') {
+    env.DEPLOY_ENV = 'prod'
+    env.DOCKERFILE = 'Prod.Dockerfile'
+} else if (branch == 'stage') {
+    env.DEPLOY_ENV = 'stage'
+    env.DOCKERFILE = 'Stage.Dockerfile'
+} else if (branch == 'dev') {
+    env.DEPLOY_ENV = 'dev'
+    env.DOCKERFILE = 'Dev.Dockerfile'
+}
 ```
 
-### Terraform issues
+### GitOps Update
 
-```bash
-terraform refresh -var-file=environments/dev/terraform.tfvars
-terraform show
-terraform import -var-file=environments/dev/terraform.tfvars <resource> <id>
+```groovy
+stage('Update Deployment Repo') {
+    steps {
+        script {
+            withCredentials([...]) {
+                sh '''
+                    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+                    git clone -b ${CURRENT_BRANCH} https://${GIT_USER}:${GIT_PASS}@github.com/vladyslav-panchenko280/django-app.git .
+
+                    # Update values file
+                    sed -i "s|tag: .*|tag: \"django-${DEPLOY_ENV}\"|g" \
+                      charts/django-app/values-${DEPLOY_ENV}.yaml
+
+                    git add charts/django-app/values-${DEPLOY_ENV}.yaml
+                    git commit -m "Update django-app image to django-${DEPLOY_ENV}"
+                    git push https://${GIT_USER}:${GIT_PASS}@github.com/vladyslav-panchenko280/django-app.git ${CURRENT_BRANCH}
+                '''
+            }
+        }
+    }
+}
 ```
 
 ## Additional Resources
@@ -358,3 +502,6 @@ terraform import -var-file=environments/dev/terraform.tfvars <resource> <id>
 - [Helm Documentation](https://helm.sh/docs/)
 - [Kubernetes Documentation](https://kubernetes.io/docs/)
 - [Django Deployment Checklist](https://docs.djangoproject.com/en/stable/howto/deployment/checklist/)
+- [AWS EKS Documentation](https://docs.aws.amazon.com/eks/)
+- [Jenkins Pipeline Syntax](https://www.jenkins.io/doc/book/pipeline/syntax/)
+- [AWS ECR Documentation](https://docs.aws.amazon.com/ecr/)

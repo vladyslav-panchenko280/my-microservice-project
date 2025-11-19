@@ -1,0 +1,97 @@
+# Default values for jenkins chart
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+environment: dev
+
+# Jenkins configuration
+jenkins:
+  controller:
+    admin:
+      username: admin
+      password: admin123
+
+    serviceType: LoadBalancer
+    servicePort: 80
+    service:
+      port: 80
+      targetPort: 8080
+
+    resources:
+      limits:
+        cpu: "500m"
+        memory: "1Gi"
+      requests:
+        cpu: "250m"
+        memory: "512Mi"
+
+    persistentVolume:
+      enabled: true
+      storageClass: "ebs-sc"
+      size: 10Gi
+
+    installPlugins:
+      - kubernetes:latest
+      - workflow-aggregator:latest
+      - git:latest
+      - configuration-as-code:latest
+      - credentials-binding:latest
+      - github:latest
+      - docker-plugin:latest
+      - docker-workflow:latest
+      - job-dsl:latest
+      - blueocean:latest
+      - pipeline-stage-view:latest
+
+    serviceAccount:
+      name: jenkins-sa
+      create: false
+
+    JCasC:
+      configScripts:
+        welcome-message: |
+          jenkins:
+            systemMessage: "Jenkins Server - Environment: {{ .Values.environment }}"
+
+        credentials: |
+          credentials:
+            system:
+              domainCredentials:
+                - credentials:
+                    - usernamePassword:
+                        scope: GLOBAL
+                        id: github-token
+                        username: ${GITHUB_USERNAME}
+                        password: ${GITHUB_TOKEN}
+                        description: GitHub PAT
+
+        kubernetes-config: |
+          jenkins:
+            clouds:
+              - kubernetes:
+                  name: "kubernetes"
+                  serverUrl: "https://kubernetes.default"
+                  skipTlsVerify: true
+                  namespace: "jenkins"
+                  credentialsId: ""
+                  jenkinsUrl: "http://jenkins:8080"
+                  maxRequestsPerHost: 32
+                  retentionTimeout: 5
+                  connectTimeout: 10
+                  readTimeout: 20
+                  podRetention: "Never"
+                  templates:
+                    - name: "jenkins-agent"
+                      namespace: "jenkins"
+                      label: "jenkins-agent"
+                      nodeUsageMode: NORMAL
+                      containers:
+                        - name: "jnlp"
+                          image: "jenkins/inbound-agent:latest"
+                          alwaysPullImage: false
+                          workingDir: "/home/jenkins/agent"
+                          ttyEnabled: true
+                          resourceRequestCpu: "500m"
+                          resourceRequestMemory: "512Mi"
+                          resourceLimitCpu: "1000m"
+                          resourceLimitMemory: "1Gi"

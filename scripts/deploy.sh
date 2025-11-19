@@ -108,12 +108,5 @@ echo "To check logs:"
 echo "  kubectl logs -f -n ${NAMESPACE} -l app.kubernetes.io/name=django-app"
 echo "To port-forward locally:"
 echo "  kubectl port-forward -n ${NAMESPACE} svc/${RELEASE_NAME} 8000:8000"
-echo "To access the application:"
-if [ "$ENV" == "dev" ]; then
-    echo "  http://dev.django-app.example.com"
-elif [ "$ENV" == "stage" ]; then
-    echo "  https://stage.django-app.example.com"
-else
-    echo "  https://django-app.example.com"
-fi
+
 

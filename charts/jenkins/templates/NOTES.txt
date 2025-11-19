@@ -1,0 +1,24 @@
+1. Get the Jenkins URL by running these commands:
+{{- if .Values.jenkins.controller.serviceType }}
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+  You can watch the status of by running 'kubectl get svc --namespace {{ .Release.Namespace }} -w jenkins'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} jenkins -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+  echo http://$SERVICE_IP:{{ .Values.jenkins.controller.servicePort }}
+{{- else }}
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
+{{- end }}
+
+2. Get your 'admin' user password by running:
+  kubectl exec --namespace {{ .Release.Namespace }} -it svc/jenkins -c jenkins -- /bin/cat /run/secrets/chart-admin-password && echo
+
+3. Jenkins is deployed with Kubernetes cloud integration enabled.
+   Agents will be dynamically provisioned in the 'jenkins' namespace.
+
+4. To configure Jenkins, visit the web interface and use the admin credentials.
+
+5. Documentation:
+   - Jenkins: https://www.jenkins.io/doc/
+   - Helm Chart: https://github.com/jenkinsci/helm-charts

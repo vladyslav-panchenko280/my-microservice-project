@@ -1,0 +1,49 @@
+# Staging environment overrides
+environment: staging
+
+jenkins:
+  controller:
+    admin:
+      username: admin
+      
+    resources:
+      limits:
+        cpu: "1000m"
+        memory: "2Gi"
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+
+    persistentVolume:
+      size: 20Gi
+
+    JCasC:
+      configScripts:
+        seed-job: |
+          jobs:
+            - script: >
+                folder('staging') {
+                  displayName('Staging Jobs')
+                  description('Jobs for staging environment')
+                }
+
+                pipelineJob('staging/django-app-deploy') {
+                  description('Deploy Django application to staging')
+                  definition {
+                    cpsScm {
+                      scm {
+                        git {
+                          remote {
+                            url("https://github.com/vladyslav-panchenko280/django-app.git")
+                            credentials("github-token")
+                          }
+                          branches("*/stage")
+                        }
+                      }
+                      scriptPath("services/django-app/Jenkinsfile")
+                    }
+                  }
+                  triggers {
+                    pollSCM('H/10 * * * *')
+                  }
+              
