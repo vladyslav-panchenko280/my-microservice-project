@@ -1,20 +1,30 @@
 # S3 backend is created manually outside of Terraform
 # to avoid chicken-and-egg problem with state storage
 
-provider "helm" {
-  kubernetes {
-    host                   = data.aws_eks_cluster.eks.endpoint
-    cluster_ca_certificate = base64decode(data.aws_eks_cluster.eks.certificate_authority[0].data)
-    token                  = data.aws_eks_cluster_auth.eks.token
-  }
-}
-
 data "aws_eks_cluster" "eks" {
   name = var.cluster_name
+
+  depends_on = [module.eks]
 }
 
 data "aws_eks_cluster_auth" "eks" {
   name = var.cluster_name
+
+  depends_on = [module.eks]
+}
+
+provider "kubernetes" {
+  host                   = data.aws_eks_cluster.eks.endpoint
+  cluster_ca_certificate = base64decode(data.aws_eks_cluster.eks.certificate_authority[0].data)
+  token                  = data.aws_eks_cluster_auth.eks.token
+}
+
+provider "helm" {
+  kubernetes = {
+    host                   = data.aws_eks_cluster.eks.endpoint
+    cluster_ca_certificate = base64decode(data.aws_eks_cluster.eks.certificate_authority[0].data)
+    token                  = data.aws_eks_cluster_auth.eks.token
+  }
 }
 
 module "vpc" {
@@ -46,20 +56,17 @@ module "eks" {
 }
 
 module "jenkins" {
-  source             = "./modules/jenkins"
-  cluster_name       = var.cluster_name
-  environment        = var.environment
-  oidc_provider_arn  = module.eks.oidc_provider_arn
-  oidc_provider_url  = module.eks.oidc_provider_url
-  github_username    = var.jenkins_github_username
-  github_token       = var.jenkins_github_token
+  source                 = "./modules/jenkins"
+  cluster_name           = var.cluster_name
+  environment            = var.environment
+  oidc_provider_arn      = module.eks.oidc_provider_arn
+  oidc_provider_url      = module.eks.oidc_provider_url
+  github_username        = var.jenkins_github_username
+  github_token           = var.jenkins_github_token
   jenkins_admin_password = var.jenkins_admin_password
 
   providers = {
-    helm = helm
+    kubernetes = kubernetes
+    helm       = helm
   }
-
-  depends_on = [
-    module.eks
-  ]
 }

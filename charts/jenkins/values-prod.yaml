@@ -48,7 +48,7 @@ jenkins:
                       scm {
                         git {
                           remote {
-                            url("https://github.com/vladyslav-panchenko280/django-app.git")
+                            url("https://github.com/vladyslav-panchenko280/django-jenkins-app.git")
                             credentials("github-token")
                           }
                           branches("*/main")

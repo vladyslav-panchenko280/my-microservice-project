@@ -114,21 +114,22 @@ resource "helm_release" "jenkins" {
 
   values = [
     file("${path.module}/../../../charts/jenkins/values.yaml"),
-    file("${path.module}/../../../charts/jenkins/values-${var.environment}.yaml")
+    file("${path.module}/../../../charts/jenkins/values-${var.environment}.yaml"),
+    yamlencode({
+      environment = var.environment
+      jenkins = {
+        controller = {
+          admin = {
+            password = var.jenkins_admin_password
+          }
+        }
+      }
+    })
   ]
-
-  set {
-    name  = "environment"
-    value = var.environment
-  }
-
-  set_sensitive {
-    name  = "jenkins.controller.admin.password"
-    value = var.jenkins_admin_password
-  }
 
   depends_on = [
     kubernetes_service_account.jenkins_sa,
-    kubernetes_storage_class_v1.ebs_sc
+    kubernetes_storage_class_v1.ebs_sc,
+    kubernetes_secret.github_credentials
   ]
 }

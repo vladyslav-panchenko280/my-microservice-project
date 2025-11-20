@@ -25,6 +25,17 @@ jenkins:
         cpu: "250m"
         memory: "512Mi"
 
+    healthProbes: true
+    healthProbesLivenessTimeout: 5
+    healthProbesReadinessTimeout: 5
+    healthProbeLivenessPeriodSeconds: 10
+    healthProbeReadinessPeriodSeconds: 10
+    healthProbeLivenessFailureThreshold: 5
+    healthProbeReadinessFailureThreshold: 3
+    healthProbesStartupTimeout: 5
+    healthProbeStartupPeriodSeconds: 10
+    healthProbeStartupFailureThreshold: 30
+
     persistentVolume:
       enabled: true
       storageClass: "ebs-sc"
@@ -46,6 +57,22 @@ jenkins:
     serviceAccount:
       name: jenkins-sa
       create: false
+
+    additionalSecrets:
+      - name: github-credentials
+        value: github-credentials
+
+    containerEnv:
+      - name: GITHUB_USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: github-credentials
+            key: username
+      - name: GITHUB_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: github-credentials
+            key: token
 
     JCasC:
       configScripts:

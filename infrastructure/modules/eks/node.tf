@@ -43,6 +43,7 @@ resource "aws_eks_node_group" "general" {
 
   capacity_type  = "ON_DEMAND"
   instance_types = ["${var.instance_type}"]
+  ami_type       = "AL2023_ARM_64_STANDARD"
 
   scaling_config {
     desired_size = var.desired_size

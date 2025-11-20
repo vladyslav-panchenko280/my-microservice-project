@@ -34,7 +34,7 @@ jenkins:
                       scm {
                         git {
                           remote {
-                            url("https://github.com/vladyslav-panchenko280/django-app.git")
+                            url("https://github.com/vladyslav-panchenko280/django-jenkins-app.git")
                             credentials("github-token")
                           }
                           branches("*/dev")
@@ -44,6 +44,6 @@ jenkins:
                     }
                   }
                   triggers {
-                    pollSCM('H/5 * * * *')
+                    scm('H 0 * * *')
                   }
                 }

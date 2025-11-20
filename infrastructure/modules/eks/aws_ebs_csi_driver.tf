@@ -38,7 +38,8 @@ resource "aws_eks_addon" "ebs_csi_driver" {
 
   depends_on = [
     aws_iam_openid_connect_provider.oidc,
-    aws_iam_role_policy_attachment.ebs_irsa_policy
+    aws_iam_role_policy_attachment.ebs_irsa_policy,
+    aws_eks_node_group.general
   ]
 }
 

@@ -480,7 +480,7 @@ stage('Update Deployment Repo') {
             withCredentials([...]) {
                 sh '''
                     CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-                    git clone -b ${CURRENT_BRANCH} https://${GIT_USER}:${GIT_PASS}@github.com/vladyslav-panchenko280/django-app.git .
+                    git clone -b ${CURRENT_BRANCH} https://${GIT_USER}:${GIT_PASS}@github.com/vladyslav-panchenko280/django-jenkins-app.git .
 
                     # Update values file
                     sed -i "s|tag: .*|tag: \"django-${DEPLOY_ENV}\"|g" \
@@ -488,7 +488,7 @@ stage('Update Deployment Repo') {
 
                     git add charts/django-app/values-${DEPLOY_ENV}.yaml
                     git commit -m "Update django-app image to django-${DEPLOY_ENV}"
-                    git push https://${GIT_USER}:${GIT_PASS}@github.com/vladyslav-panchenko280/django-app.git ${CURRENT_BRANCH}
+                    git push https://${GIT_USER}:${GIT_PASS}@github.com/vladyslav-panchenko280/django-jenkins-app.git ${CURRENT_BRANCH}
                 '''
             }
         }
