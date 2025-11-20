@@ -25,10 +25,14 @@ desired_size  = 2
 max_size      = 3
 min_size      = 1
 
+# AWS Configuration
+# Replace with your actual AWS Account ID (12-digit number)
+aws_account_id = "123456789012"
+
 # Jenkins Configuration
-jenkins_github_username    = "your-github-username"
-jenkins_github_token       = "ghp_your_github_token_here"
-jenkins_admin_password     = "admin123"
+jenkins_github_username = "your-github-username"
+jenkins_github_token    = "ghp_your_github_token_here"
+jenkins_admin_password  = "admin123"
 
 # Tags
 tags = {

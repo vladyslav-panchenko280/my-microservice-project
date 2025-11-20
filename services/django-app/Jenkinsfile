@@ -1,5 +1,30 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            yaml '''
+                apiVersion: v1
+                kind: Pod
+                metadata:
+                  labels:
+                    jenkins: agent
+                spec:
+                  serviceAccountName: jenkins-sa
+                  containers:
+                  - name: default
+                    image: alpine:latest
+                    command:
+                    - cat
+                    tty: true
+                  - name: docker
+                    image: docker:20.10-dind
+                    securityContext:
+                      privileged: true
+                    env:
+                    - name: DOCKER_TLS_CERTDIR
+                      value: ""
+            '''
+        }
+    }
 
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
@@ -68,46 +93,69 @@ pipeline {
 
         stage('Build with Docker') {
             steps {
-                sh '''
-                    echo "Building Docker image with ${DOCKERFILE}..."
-                    cd ${BUILD_CONTEXT}
-                    docker build \
-                        -f ${DOCKERFILE} \
-                        -t ${IMAGE_NAME}:${IMAGE_TAG_FINAL} \
-                        -t ${IMAGE_NAME}:django-${DEPLOY_ENV} \
-                        --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
-                        --build-arg VCS_REF=$(git rev-parse --short HEAD) \
-                        --build-arg VERSION=${IMAGE_TAG_FINAL} \
-                        .
-                '''
+                container('docker') {
+                    sh '''
+                        echo "Current directory: $(pwd)"
+                        echo "Listing workspace:"
+                        ls -la
+
+                        echo "Building Docker image with ${DOCKERFILE}..."
+                        DOCKERFILE_PATH=$(find . -name "${DOCKERFILE}" -type f | head -1)
+                        if [ -z "$DOCKERFILE_PATH" ]; then
+                            echo "ERROR: ${DOCKERFILE} not found!"
+                            find . -name "*.Dockerfile" -o -name "Dockerfile*"
+                            exit 1
+                        fi
+
+                        CONTEXT_DIR=$(dirname "$DOCKERFILE_PATH")
+                        echo "Using context: $CONTEXT_DIR"
+                        echo "Using dockerfile: $DOCKERFILE_PATH"
+
+                        docker build \
+                            -f "$DOCKERFILE_PATH" \
+                            -t ${IMAGE_NAME}:${IMAGE_TAG_FINAL} \
+                            -t ${IMAGE_NAME}:django-${DEPLOY_ENV} \
+                            --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+                            --build-arg VCS_REF=$(git rev-parse --short HEAD) \
+                            --build-arg VERSION=${IMAGE_TAG_FINAL} \
+                            "$CONTEXT_DIR"
+                    '''
+                }
             }
         }
 
         stage('Test Image') {
             steps {
-                sh '''
-                    echo "Testing Docker image..."
-                    docker inspect ${IMAGE_NAME}:${IMAGE_TAG_FINAL}
-                    echo "Image size: $(docker images --format "{{.Size}}" ${IMAGE_NAME}:${IMAGE_TAG_FINAL})"
-                '''
+                container('docker') {
+                    sh '''
+                        echo "Testing Docker image..."
+                        docker inspect ${IMAGE_NAME}:${IMAGE_TAG_FINAL}
+                        echo "Image size: $(docker images --format "{{.Size}}" ${IMAGE_NAME}:${IMAGE_TAG_FINAL})"
+                    '''
+                }
             }
         }
 
         stage('Push to ECR') {
             steps {
-                sh '''
-                    echo "Authenticating with ECR..."
-                    aws ecr get-login-password --region ${AWS_REGION} | \
-                        docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                container('docker') {
+                    sh '''
+                        echo "Installing AWS CLI..."
+                        apk add --no-cache aws-cli
 
-                    echo "Pushing images to ECR..."
-                    docker push ${IMAGE_NAME}:${IMAGE_TAG_FINAL}
-                    docker push ${IMAGE_NAME}:django-${DEPLOY_ENV}
+                        echo "Authenticating with ECR..."
+                        aws ecr get-login-password --region ${AWS_REGION} | \
+                            docker login --username AWS --password-stdin ${ECR_REGISTRY}
 
-                    echo "Images successfully pushed to ECR"
-                    echo "  - ${IMAGE_NAME}:${IMAGE_TAG_FINAL}"
-                    echo "  - ${IMAGE_NAME}:django-${DEPLOY_ENV}"
-                '''
+                        echo "Pushing images to ECR..."
+                        docker push ${IMAGE_NAME}:${IMAGE_TAG_FINAL}
+                        docker push ${IMAGE_NAME}:django-${DEPLOY_ENV}
+
+                        echo "Images successfully pushed to ECR"
+                        echo "  - ${IMAGE_NAME}:${IMAGE_TAG_FINAL}"
+                        echo "  - ${IMAGE_NAME}:django-${DEPLOY_ENV}"
+                    '''
+                }
             }
         }
 
@@ -170,14 +218,18 @@ Commit: $(git rev-parse --short HEAD)"
 
     post {
         success {
-            echo "Build succeeded"
-            echo "Image: ${IMAGE_NAME}:${IMAGE_TAG_FINAL}"
+            script {
+                echo "Build succeeded"
+                echo "Image: ${IMAGE_NAME}:${IMAGE_TAG_FINAL}"
+            }
         }
         failure {
-            echo "Build failed - check logs"
+            script {
+                echo "Build failed - check logs"
+            }
         }
         cleanup {
-            cleanWs()
+            deleteDir()
         }
     }
 }

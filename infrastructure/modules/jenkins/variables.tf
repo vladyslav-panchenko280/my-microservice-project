@@ -49,3 +49,10 @@ variable "jenkins_admin_password" {
   sensitive   = true
   default     = "admin123"
 }
+
+variable "aws_account_id" {
+  description = "AWS Account ID for Jenkins credentials"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

@@ -64,6 +64,7 @@ module "jenkins" {
   github_username        = var.jenkins_github_username
   github_token           = var.jenkins_github_token
   jenkins_admin_password = var.jenkins_admin_password
+  aws_account_id         = var.aws_account_id
 
   providers = {
     kubernetes = kubernetes
