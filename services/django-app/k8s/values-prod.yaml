@@ -32,15 +32,13 @@ configMap:
     DJANGO_SETTINGS_MODULE: django_app.settings
     DEBUG: "False"
     ENVIRONMENT: prod
-    ALLOWED_HOSTS: "*"  # LoadBalancer DNS name will be dynamic
+    ALLOWED_HOSTS: "*"  
 
 env: []
 
-# Database credentials from Terraform-managed secret
 database:
   secretName: django-db-credentials
 
-# Nginx sidecar configuration
 nginx:
   enabled: true
   image:

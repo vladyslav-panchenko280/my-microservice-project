@@ -28,11 +28,10 @@ configMap:
     DJANGO_SETTINGS_MODULE: django_app.settings
     DEBUG: "True"
     ENVIRONMENT: dev
-    ALLOWED_HOSTS: "*"  # Allow all hosts for development
+    ALLOWED_HOSTS: "*" 
 
 env: []
 
-# Database credentials from Terraform-managed secret
 database:
   secretName: django-db-credentials
 
