@@ -34,7 +34,7 @@ variable "github_token" {
 variable "git_repository_url" {
   description = "Git repository URL for Argo CD to monitor"
   type        = string
-  default     = "https://github.com/vladyslav-panchenko280/enterprise-suite-infrastructure.git"
+  default     = "https://github.com/vladyslav-panchenko280/django-jenkins-app.git"
 }
 
 variable "argocd_namespace" {

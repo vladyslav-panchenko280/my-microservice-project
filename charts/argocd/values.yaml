@@ -121,5 +121,5 @@ gitRepository:
 
 djangoApp:
   enabled: true
-  path: "charts/django-app"
+  path: "services/django-app/k8s"
   targetRevision: ""

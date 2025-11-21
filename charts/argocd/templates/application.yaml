@@ -14,7 +14,7 @@ spec:
   source:
     repoURL: {{ .Values.gitRepository.url }}
     targetRevision: {{ .Values.djangoApp.targetRevision | default "main" }}
-    path: {{ .Values.djangoApp.path | default "charts/django-app" }}
+    path: {{ .Values.djangoApp.path | default "services/django-app/k8s" }}
     helm:
       valueFiles:
         - values.yaml

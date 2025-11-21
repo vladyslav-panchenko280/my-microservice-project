@@ -39,11 +39,6 @@ enterprise-suite-infrastructure/
 │   ├── outputs.tf
 │   └── backend.tf
 ├── charts/                      # Helm charts
-│   ├── django-app/             # Application deployment
-│   │   ├── values.yaml         # Base configuration
-│   │   ├── values-dev.yaml     # Dev overrides
-│   │   ├── values-stage.yaml   # Stage overrides
-│   │   └── values-prod.yaml    # Prod overrides
 │   ├── jenkins/                # Jenkins deployment
 │   │   ├── values.yaml         # Base configuration
 │   │   ├── values-dev.yaml     # Dev jobs
@@ -72,18 +67,6 @@ enterprise-suite-infrastructure/
     └── setup-environment.sh    # Complete environment setup
 ```
 
-## Image Tagging Strategy
-
-Images are tagged consistently across all environments:
-- Development: `django-dev`
-- Staging: `django-stage`
-- Production: `django-prod`
-
-This tagging is used by:
-- `build-and-push.sh` script
-- Jenkins pipeline
-- Helm values files (`values-{env}.yaml`)
-
 ## CI/CD Pipeline (Jenkins)
 
 ### Pipeline Flow
@@ -105,7 +88,7 @@ The Jenkinsfile implements a complete GitOps workflow:
 
 5. **Update Deployment Repo**: Updates Helm values file with new image tag
    - Clones current branch from django-app repo
-   - Updates `charts/django-app/values-{env}.yaml`
+   - Updates `services/django-app/k8s/values-{env}.yaml`
    - Commits and pushes changes back to the same branch
 
 6. **Deploy to EKS**: Deploys application via Helm
@@ -174,26 +157,6 @@ jenkins_github_token     = "ghp_your_github_token_here"
 ### 3. Full environment setup (recommended)
 
 ```bash
-# Dev environment
-./scripts/setup-environment.sh dev
-
-# Stage environment
-./scripts/setup-environment.sh stage
-
-# Prod environment
-./scripts/setup-environment.sh prod
-```
-
-This script automatically:
-1. Applies the Terraform configuration
-2. Builds and pushes Docker images to ECR
-3. Deploys the application to Kubernetes
-
-### 4. Step-by-step setup (alternative)
-
-#### Step 1: Apply Terraform
-
-```bash
 # Dev
 ./scripts/terraform-apply.sh dev
 
@@ -210,37 +173,6 @@ This creates:
 - ECR repositories (es-ecr-dev, es-ecr-stage, es-ecr-prod)
 - Jenkins with IRSA permissions
 
-#### Step 2: Build and push Docker images
-
-The script automatically selects the correct Dockerfile per environment:
-
-```bash
-# Build for dev (uses Dev.Dockerfile)
-./scripts/build-and-push.sh dev
-
-# Build for stage (uses Stage.Dockerfile)
-./scripts/build-and-push.sh stage
-
-# Build for prod (uses Prod.Dockerfile)
-./scripts/build-and-push.sh prod
-
-# Build specific service
-./scripts/build-and-push.sh dev django-app
-./scripts/build-and-push.sh dev nginx
-```
-
-#### Step 3: Deploy to Kubernetes
-
-```bash
-# Dev
-./scripts/deploy.sh dev
-
-# Stage
-./scripts/deploy.sh stage
-
-# Prod
-./scripts/deploy.sh prod
-```
 
 ## Accessing the Application
 
@@ -312,20 +244,6 @@ kubectl logs -n django-dev <pod-name> --previous
 ```
 
 ### Updating the Application
-
-#### Manual Update
-
-```bash
-# 1. Modify code in django-app repo
-# 2. Build new image
-./scripts/build-and-push.sh dev
-
-# 3. Update Helm values with new tag
-# Edit charts/django-app/values-dev.yaml
-
-# 4. Deploy
-./scripts/deploy.sh dev
-```
 
 #### Via Jenkins (GitOps)
 

@@ -186,7 +186,7 @@ pipeline {
 
                             git clone -b ${CURRENT_BRANCH} https://${GIT_USER}:${GIT_PASS}@github.com/vladyslav-panchenko280/django-jenkins-app.git .
 
-                            VALUES_FILE="charts/django-app/values-${DEPLOY_ENV}.yaml"
+                            VALUES_FILE="services/django-app/k8s/values-${DEPLOY_ENV}.yaml"
 
                             if [ -f "$VALUES_FILE" ]; then
                                 echo "Updating image tag in ${VALUES_FILE}..."
