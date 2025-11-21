@@ -33,15 +33,11 @@ configMap:
     ENVIRONMENT: stage
     ALLOWED_HOSTS: "*"  # LoadBalancer DNS name will be dynamic
 
-env:
-  - name: DATABASE_URL
-    valueFrom:
-      secretKeyRef:
-        name: django-db-secret
-        key: database-url
+env: []
 
-postgresql:
-  enabled: false
+# Database credentials from Terraform-managed secret
+database:
+  secretName: django-db-credentials
 
 nginx:
   enabled: true

@@ -30,12 +30,11 @@ configMap:
     ENVIRONMENT: dev
     ALLOWED_HOSTS: "*"  # Allow all hosts for development
 
-env:
-  - name: DATABASE_URL
-    valueFrom:
-      secretKeyRef:
-        name: django-db-secret
-        key: database-url
+env: []
+
+# Database credentials from Terraform-managed secret
+database:
+  secretName: django-db-credentials
 
 nginx:
   enabled: true

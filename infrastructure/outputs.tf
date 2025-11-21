@@ -56,3 +56,24 @@ output "argocd_url" {
   value       = module.argocd.argocd_url
 }
 
+output "db_host" {
+  description = "Database hostname for Django connection"
+  value       = module.rds.db_host
+}
+
+output "db_port" {
+  description = "Database port"
+  value       = module.rds.db_port
+}
+
+output "db_name" {
+  description = "Database name"
+  value       = module.rds.db_name
+}
+
+output "db_connection_string" {
+  description = "Django DATABASE_URL format connection string"
+  value       = "postgres://${module.rds.db_username}:****@${module.rds.db_host}:${module.rds.db_port}/${module.rds.db_name}"
+  sensitive   = false
+}
+

@@ -113,7 +113,6 @@ variable "aws_account_id" {
   default     = ""
 }
 
-# Argo CD Variables
 variable "argocd_github_username" {
   description = "GitHub username for Argo CD repository access"
   type        = string
@@ -138,5 +137,79 @@ variable "argocd_admin_password" {
   type        = string
   sensitive   = true
   default     = ""
+}
+
+variable "db_username" {
+  description = "Master username for the database"
+  type        = string
+  default     = "postgres"
+}
+
+variable "db_password" {
+  description = "Master password for the database"
+  type        = string
+  sensitive   = true
+}
+
+variable "db_name" {
+  description = "Name identifier for the RDS/Aurora instance"
+  type        = string
+  default     = "myapp-db"
+}
+
+variable "db_database_name" {
+  description = "Name of the database to create"
+  type        = string
+  default     = "myapp"
+}
+
+variable "db_use_aurora" {
+  description = "Use Aurora PostgreSQL instead of standard RDS"
+  type        = bool
+  default     = true
+}
+
+variable "db_aurora_instance_count" {
+  description = "Number of Aurora instances (writer + readers)"
+  type        = number
+  default     = 2
+}
+
+variable "db_instance_class" {
+  description = "Instance class for the database"
+  type        = string
+  default     = "db.t3.medium"
+}
+
+variable "db_allocated_storage" {
+  description = "Allocated storage in GB (only for standard RDS)"
+  type        = number
+  default     = 20
+}
+
+variable "db_multi_az" {
+  description = "Enable Multi-AZ deployment for high availability"
+  type        = bool
+  default     = false
+}
+
+variable "db_publicly_accessible" {
+  description = "Make database publicly accessible"
+  type        = bool
+  default     = false
+}
+
+variable "db_backup_retention_period" {
+  description = "Number of days to retain backups"
+  type        = number
+  default     = 7
+}
+
+variable "db_parameters" {
+  description = "Database parameters"
+  type        = map(string)
+  default = {
+    log_min_duration_statement = "500"
+  }
 }
 

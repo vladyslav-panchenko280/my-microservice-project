@@ -142,6 +142,11 @@ configMap:
 
 env: []
 
+# Database configuration - set secretName to use the Terraform-created secret
+database:
+  # Name of the Kubernetes secret containing DB credentials (created by Terraform)
+  secretName: ""
+
 # Additional volumes on the output Deployment definition.
 volumes: []
 # - name: foo

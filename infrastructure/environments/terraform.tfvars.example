@@ -34,9 +34,26 @@ jenkins_github_username = "your-github-username"
 jenkins_github_token    = "ghp_your_github_token_here"
 jenkins_admin_password  = "admin123"
 
+# Aurora/RDS Database Configuration
+db_name                    = "myapp-db-dev"
+db_database_name           = "myapp"
+db_username                = "postgres"
+db_password                = "YourSecurePassword123!" # Replace with a strong password
+db_use_aurora              = false                    # Set to true for Aurora PostgreSQL
+db_aurora_instance_count   = 1                        # Number of Aurora instances (writer + readers)
+db_instance_class          = "db.t3.micro"            # Instance class for the database
+db_allocated_storage       = 20                       # Storage in GB (only for standard RDS)
+db_multi_az                = false                    # Enable Multi-AZ for high availability
+db_publicly_accessible     = false                    # Make database publicly accessible
+db_backup_retention_period = 7                        # Days to retain backups
+db_parameters = {
+  log_min_duration_statement = "500"
+}
+
 # Tags
 tags = {
   Environment = "dev"
   Project     = "enterprise-suite"
   ManagedBy   = "Terraform"
 }
+
