@@ -278,65 +278,187 @@ helm rollback django-app -n django-dev
 helm rollback django-app 2 -n django-dev
 ```
 
-## Database Configuration (RDS/Aurora PostgreSQL)
+## RDS Module Documentation
 
-### Architecture
+### Module Usage Example
 
-The infrastructure includes a reusable RDS module that supports:
-- **Aurora PostgreSQL**: Multi-AZ, auto-scaling, read replicas (recommended for Stage/Prod)
-- **Standard RDS PostgreSQL**: Single instance option (recommended for Dev)
+Basic module instantiation in `infrastructure/main.tf`:
 
-### Environment-Specific Database Settings
+```hcl
+module "rds" {
+  source = "./modules/rds"
 
-| Setting | Dev | Stage | Prod |
-|---------|-----|-------|------|
-| Engine Type | Standard RDS | Aurora | Aurora |
-| Instance Count | 1 | 2 (1 writer + 1 reader) | 3 (1 writer + 2 readers) |
-| Instance Class | db.t3.micro | db.r6g.large | db.r6g.xlarge |
-| Storage | 20 GB | 50 GB | 100 GB |
-| Multi-AZ | No | Yes | Yes |
-| Backup Retention | 3 days | 7 days | 30 days |
+  name                    = var.db_name
+  db_name                 = var.db_database_name
+  username                = var.db_username
+  password                = var.db_password
+  vpc_id                  = module.vpc.vpc_id
+  subnet_private_ids      = module.vpc.private_subnet_ids
+  subnet_public_ids       = module.vpc.public_subnet_ids
+
+  use_aurora              = var.db_use_aurora
+  engine                  = var.db_engine
+  engine_version          = var.db_engine_version
+  instance_class          = var.db_instance_class
+  allocated_storage       = var.db_allocated_storage
+
+  multi_az                = var.db_multi_az
+  publicly_accessible     = var.db_publicly_accessible
+  backup_retention_period = var.db_backup_retention_period
+
+  db_parameters           = var.db_parameters
+  tags                    = var.tags
+}
+```
 
 ### Database Variables
 
-All database settings are configured via `terraform.tfvars`:
+**Required:**
+- `db_name` - Database instance or cluster name
+- `db_database_name` - Initial database name
+- `db_username` - Master user username
+- `db_password` - Master user password (use AWS Secrets Manager for production)
+
+**Core Configuration:**
+- `db_engine` - Database engine type: `postgres`, `mysql`, `mariadb`, `oracle-se2`, `sqlserver-se` (default: `postgres`)
+- `db_engine_version` - Engine version for standard RDS (default: `14.7`)
+- `db_use_aurora` - Enable Aurora (default: `false`)
+- `db_instance_class` - Instance class: `db.t3.micro`, `db.t3.small`, `db.r5.large`, `db.r5.xlarge`, etc. (default: `db.t3.micro`)
+- `db_allocated_storage` - Storage size in GB (default: `20`, Aurora scales automatically)
+
+**Availability & Backup:**
+- `db_multi_az` - Enable Multi-AZ for high availability (default: `false`)
+- `db_publicly_accessible` - Allow public internet access to database (default: `false`)
+- `db_backup_retention_period` - Number of days to retain backups
+- `db_aurora_instance_count` - Total Aurora instances (default: `2`)
+
+**Performance Parameters:**
+
+The `db_parameters` variable accepts key-value pairs for database tuning:
 
 ```hcl
-# Instance naming
-db_name              = "myapp-db-dev"
-
-# Database configuration
-db_database_name     = "myapp"
-db_username          = "postgres"
-db_password          = "YourSecurePassword123!"  # Use AWS Secrets Manager for prod
-
-# Aurora vs Standard RDS
-db_use_aurora        = false  # Set to true for Aurora
-db_aurora_instance_count = 1
-
-# Instance sizing
-db_instance_class    = "db.t3.micro"
-db_allocated_storage = 20
-
-# Availability and backup
-db_multi_az          = false
-db_backup_retention_period = 3
-db_publicly_accessible = false
-
-# Custom parameters
 db_parameters = {
-  log_min_duration_statement = "500"
+  max_connections = 100    # Maximum concurrent connections
+  log_statement   = "all"   # Query logging level: "all", "mod", "ddl", "none"
+  work_mem        = "4MB"   # Memory for sorting and hashing operations
 }
 ```
+
+**Parameter Values by Environment:**
+
+- **Development**: `max_connections: 100`, `log_statement: "all"`, `work_mem: "4MB"`
+- **Staging**: `max_connections: 300`, `log_statement: "mod"`, `work_mem: "8MB"`
+- **Production**: `max_connections: 1000`, `log_statement: "mod"`, `work_mem: "32MB"`
+
+### How to Change Database Configuration
+
+#### 1. Change Database Type (RDS ↔ Aurora)
+
+**Switch from Standard RDS to Aurora:**
+
+```hcl
+# In terraform.tfvars
+db_use_aurora            = true
+db_aurora_instance_count = 2
+db_engine_version        = "15.3"
+```
+
+**Switch from Aurora to Standard RDS:**
+
+```hcl
+# In terraform.tfvars
+db_use_aurora            = false
+db_engine                = "postgres"
+db_engine_version        = "15.2"
+db_allocated_storage     = 20
+```
+
+#### 2. Change Database Engine
+
+**PostgreSQL:**
+```hcl
+db_engine         = "postgres"
+db_engine_version = "15.2"
+```
+
+**MySQL:**
+```hcl
+db_engine         = "mysql"
+db_engine_version = "8.0.35"
+```
+
+**MariaDB:**
+```hcl
+db_engine         = "mariadb"
+db_engine_version = "10.6.14"
+```
+
+**Oracle SE2:**
+```hcl
+db_engine         = "oracle-se2"
+db_engine_version = "19.0.0.0.ru-2024-01.1"
+```
+
+#### 3. Change Instance Class (Performance Tier)
+
+**Budget Options (Development/Testing):**
+- `db.t3.micro` - 1 vCPU, 1 GB RAM
+- `db.t3.small` - 1 vCPU, 2 GB RAM
+- `db.t3.medium` - 2 vCPU, 4 GB RAM
+
+**Standard Options (General Purpose):**
+- `db.m5.large` - 2 vCPU, 8 GB RAM
+- `db.m5.xlarge` - 4 vCPU, 16 GB RAM
+- `db.m5.2xlarge` - 8 vCPU, 32 GB RAM
+
+**Memory Optimized (High Performance):**
+- `db.r5.large` - 2 vCPU, 16 GB RAM
+- `db.r5.xlarge` - 4 vCPU, 32 GB RAM
+- `db.r6g.large` - 2 vCPU, 16 GB RAM (Graviton2, more cost-efficient)
+- `db.r6g.xlarge` - 4 vCPU, 32 GB RAM
+
+**Example: Scale up for production**
+```hcl
+db_instance_class = "db.r6g.xlarge"  # Powerful instance for production
+```
+
+#### 4. Adjust Database Parameters
+
+Add custom parameters through the `parameters` variable in the RDS module (in `variables.tf`):
+
+```hcl
+# In terraform.tfvars
+parameters = {
+  "shared_preload_libraries" = "pg_stat_statements"
+  "maintenance_work_mem"     = "256MB"
+  "effective_cache_size"     = "2GB"
+  "random_page_cost"         = "1.1"
+}
+```
+
+Combine standard and custom parameters:
+```hcl
+db_parameters = {
+  max_connections = 500
+  log_statement   = "mod"
+  work_mem        = "16MB"
+}
+
+parameters = {
+  "shared_preload_libraries" = "pg_stat_statements"
+  "effective_cache_size"     = "4GB"
+}
+```
+
+### Database Configuration in terraform.tfvars
+
+All database settings are configured via environment-specific `terraform.tfvars` files
 
 ### Kubernetes Database Secret
 
 Terraform automatically creates a Kubernetes secret with database credentials:
 
 ```bash
-# Secret is created automatically by Terraform
-# Located in: kubernetes_secret.django_db resource in main.tf
-
 # Verify the secret was created
 kubectl get secret django-db-credentials -o yaml
 
@@ -381,7 +503,6 @@ if os.environ.get('DB_HOST'):
         }
     }
 else:
-    # Local development: SQLite
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',

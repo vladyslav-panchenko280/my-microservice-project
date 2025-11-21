@@ -47,8 +47,9 @@ db_multi_az                = false                    # Enable Multi-AZ for high
 db_publicly_accessible     = false                    # Make database publicly accessible
 db_backup_retention_period = 7                        # Days to retain backups
 db_parameters = {
-  log_min_duration_statement = "500"
-}
+  max_connections = 100
+  log_statement   = "all"
+  work_mem        = "4MB"}
 
 # Tags
 tags = {

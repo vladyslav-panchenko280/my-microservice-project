@@ -25,7 +25,14 @@ resource "aws_db_parameter_group" "standard" {
   description = "Standard RDS PG for ${var.name}"
 
   dynamic "parameter" {
-    for_each = var.parameters
+    for_each = merge(
+      {
+        "max_connections" = tostring(var.db_parameters.max_connections)
+        "log_statement"   = var.db_parameters.log_statement
+        "work_mem"        = var.db_parameters.work_mem
+      },
+      var.parameters
+    )
     content {
       name         = parameter.key
       value        = parameter.value

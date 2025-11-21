@@ -75,6 +75,16 @@ variable "parameters" {
   default = {}
 }
 
+variable "db_parameters" {
+  type = object({
+    max_connections = optional(number, 100)
+    log_statement   = optional(string, "all")
+    work_mem        = optional(string, "4MB")
+  })
+  default = {}
+  description = "Database parameters for tuning performance and logging"
+}
+
 variable "use_aurora" {
   type    = bool
   default = false
