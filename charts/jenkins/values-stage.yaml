@@ -1,11 +1,23 @@
-# Staging environment overrides
 environment: staging
 
 jenkins:
   controller:
     admin:
       username: admin
-      
+
+    installPlugins:
+      - kubernetes:latest
+      - workflow-aggregator:latest
+      - git:latest
+      - configuration-as-code:latest
+      - credentials-binding:latest
+      - github:latest
+      - docker-plugin:latest
+      - docker-workflow:latest
+      - job-dsl:latest
+      - blueocean:latest
+      - pipeline-stage-view:latest
+
     resources:
       limits:
         cpu: "1000m"
@@ -19,6 +31,22 @@ jenkins:
 
     JCasC:
       configScripts:
+        credentials: |
+          credentials:
+            system:
+              domainCredentials:
+                - credentials:
+                    - string:
+                        id: aws-account-id
+                        scope: GLOBAL
+                        secret: ${AWS_ACCOUNT_ID}
+                        description: "AWS Account ID for ECR"
+                    - usernamePassword:
+                        id: github-token
+                        scope: GLOBAL
+                        username: ${GITHUB_USERNAME}
+                        password: ${GITHUB_TOKEN}
+                        description: "GitHub credentials for repo access"
         seed-job: |
           jobs:
             - script: >
@@ -40,10 +68,10 @@ jenkins:
                           branches("*/stage")
                         }
                       }
-                      scriptPath("services/django-app/Jenkinsfile")
+                      scriptPath("./Jenkinsfile")
                     }
                   }
                   triggers {
                     scm('H/10 * * * *')
                   }
-              
+

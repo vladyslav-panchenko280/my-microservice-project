@@ -1,0 +1,25 @@
+Argo CD has been installed successfully!
+
+Environment: {{ .Values.environment }}
+
+1. Get the Argo CD admin password:
+   kubectl -n {{ .Release.Namespace }} get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+
+2. Access the Argo CD UI:
+   {{- if eq (index .Values "argo-cd" "server" "service" "type") "LoadBalancer" }}
+   kubectl -n {{ .Release.Namespace }} get svc argocd-server -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+   {{- else }}
+   kubectl port-forward svc/argocd-server -n {{ .Release.Namespace }} 8080:443
+   Then open: https://localhost:8080
+   {{- end }}
+
+3. Login with:
+   Username: admin
+   Password: (from step 1)
+
+{{- if .Values.djangoApp.enabled }}
+
+4. Django Application:
+   Name: django-app-{{ .Values.environment }}
+   Path: {{ .Values.djangoApp.path }}
+{{- end }}

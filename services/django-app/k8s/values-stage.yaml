@@ -1,10 +1,9 @@
-# Production environment values
-replicaCount: 3
+replicaCount: 2
 
 image:
-  repository: 625041985844.dkr.ecr.us-east-1.amazonaws.com/es-ecr-prod
-  pullPolicy: IfNotPresent
-  tag: "django-prod"
+  repository: 625041985844.dkr.ecr.us-east-1.amazonaws.com/es-ecr-stage
+  pullPolicy: Always
+  tag: "django-stage"
 
 service:
   type: LoadBalancer
@@ -15,24 +14,23 @@ ingress:
 
 resources:
   limits:
-    cpu: 2000m
-    memory: 2Gi
-  requests:
     cpu: 1000m
     memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
 
 autoscaling:
   enabled: true
   minReplicas: 2
   maxReplicas: 6
   targetCPUUtilizationPercentage: 70
-  targetMemoryUtilizationPercentage: 80
 
 configMap:
   data:
     DJANGO_SETTINGS_MODULE: django_app.settings
     DEBUG: "False"
-    ENVIRONMENT: prod
+    ENVIRONMENT: stage
     ALLOWED_HOSTS: "*"  # LoadBalancer DNS name will be dynamic
 
 env:
@@ -42,23 +40,14 @@ env:
         name: django-db-secret
         key: database-url
 
-# PostgreSQL configuration (use RDS in production)
 postgresql:
   enabled: false
 
-# Nginx sidecar configuration
 nginx:
   enabled: true
   image:
     repository: nginx
     tag: "1.25-alpine"
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 250m
-      memory: 256Mi
   config: |
     server {
       listen 80;
@@ -69,24 +58,10 @@ nginx:
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
       }
 
       location /static/ {
         alias /app/staticfiles/;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-      }
-
-      location /media/ {
-        alias /app/media/;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
       }
     }
-
-# Pod disruption budget for high availability
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 2
 

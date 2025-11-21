@@ -1,0 +1,125 @@
+argo-cd:
+  global:
+    logging:
+      level: info
+
+  server:
+    replicas: 1
+
+    service:
+      type: LoadBalancer
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+        service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+
+    extraArgs:
+      - --insecure
+
+    ingress:
+      enabled: false
+
+  repoServer:
+    replicas: 1
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  controller:
+    replicas: 1
+
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: false
+
+  redis:
+    enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+  redis-ha:
+    enabled: false
+
+  dex:
+    enabled: false
+
+  notifications:
+    enabled: true
+
+    triggers:
+      trigger.on-sync-succeeded: |
+        - description: Application syncing has succeeded
+          send:
+            - app-sync-succeeded
+          when: app.status.operationState.phase in ['Succeeded']
+
+      trigger.on-sync-failed: |
+        - description: Application syncing has failed
+          send:
+            - app-sync-failed
+          when: app.status.operationState.phase in ['Error', 'Failed']
+
+      trigger.on-health-degraded: |
+        - description: Application has degraded
+          send:
+            - app-health-degraded
+          when: app.status.health.status == 'Degraded'
+
+  applicationSet:
+    enabled: true
+    replicas: 1
+
+  configs:
+    cm:
+      statusbadge.enabled: "true"
+      timeout.reconciliation: 180s
+      application.resourceTrackingMethod: annotation
+
+    rbac:
+      policy.default: role:readonly
+      policy.csv: |
+        p, role:admin, applications, *, */*, allow
+        p, role:admin, clusters, *, *, allow
+        p, role:admin, repositories, *, *, allow
+        p, role:admin, projects, *, *, allow
+        g, admin, role:admin
+
+    params:
+      server.insecure: true
+      controller.status.processors: 20
+      controller.operation.processors: 10
+      controller.self.heal.timeout.seconds: 5
+      controller.repo.server.timeout.seconds: 60
+      reposerver.parallelism.limit: 0
+
+environment: dev
+
+gitRepository:
+  url: "https://github.com/vladyslav-panchenko280/django-jenkins-app.git"
+  credentials:
+    enabled: false
+    username: ""
+    password: ""
+
+djangoApp:
+  enabled: true
+  path: "services/django-app/k8s"
+  targetRevision: ""

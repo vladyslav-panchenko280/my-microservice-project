@@ -1,4 +1,3 @@
-# Storage class for Jenkins persistent volume
 resource "kubernetes_storage_class_v1" "ebs_sc" {
   metadata {
     name = "ebs-sc"
@@ -35,6 +34,8 @@ resource "kubernetes_service_account" "jenkins_sa" {
       "eks.amazonaws.com/role-arn" = aws_iam_role.jenkins_kaniko_role.arn
     }
   }
+
+  depends_on = [kubernetes_namespace.jenkins]
 }
 
 resource "aws_iam_role" "jenkins_kaniko_role" {
@@ -105,6 +106,25 @@ resource "kubernetes_secret" "github_credentials" {
   }
 
   type = "Opaque"
+
+  depends_on = [kubernetes_namespace.jenkins]
+}
+
+resource "kubernetes_secret" "aws_credentials" {
+  count = var.aws_account_id != "" ? 1 : 0
+
+  metadata {
+    name      = "aws-credentials"
+    namespace = kubernetes_namespace.jenkins.metadata[0].name
+  }
+
+  data = {
+    account_id = var.aws_account_id
+  }
+
+  type = "Opaque"
+
+  depends_on = [kubernetes_namespace.jenkins]
 }
 
 resource "helm_release" "jenkins" {
@@ -122,6 +142,35 @@ resource "helm_release" "jenkins" {
           admin = {
             password = var.jenkins_admin_password
           }
+          containerEnv = [
+            {
+              name = "GITHUB_USERNAME"
+              valueFrom = {
+                secretKeyRef = {
+                  name = "github-credentials"
+                  key  = "username"
+                }
+              }
+            },
+            {
+              name = "GITHUB_TOKEN"
+              valueFrom = {
+                secretKeyRef = {
+                  name = "github-credentials"
+                  key  = "token"
+                }
+              }
+            },
+            {
+              name = "AWS_ACCOUNT_ID"
+              valueFrom = {
+                secretKeyRef = {
+                  name = "aws-credentials"
+                  key  = "account_id"
+                }
+              }
+            }
+          ]
         }
       }
     })
@@ -130,6 +179,7 @@ resource "helm_release" "jenkins" {
   depends_on = [
     kubernetes_service_account.jenkins_sa,
     kubernetes_storage_class_v1.ebs_sc,
-    kubernetes_secret.github_credentials
+    kubernetes_secret.github_credentials,
+    kubernetes_secret.aws_credentials
   ]
 }

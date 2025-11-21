@@ -41,3 +41,18 @@ output "jenkins_namespace" {
   value = module.jenkins.jenkins_namespace
 }
 
+output "argocd_namespace" {
+  description = "Namespace where Argo CD is installed"
+  value       = module.argocd.argocd_namespace
+}
+
+output "argocd_server_service" {
+  description = "Argo CD server service name"
+  value       = module.argocd.argocd_server_service
+}
+
+output "argocd_url" {
+  description = "Command to access Argo CD UI"
+  value       = module.argocd.argocd_url
+}
+

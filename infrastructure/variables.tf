@@ -106,3 +106,37 @@ variable "jenkins_admin_password" {
   default     = "admin123"
 }
 
+variable "aws_account_id" {
+  description = "AWS Account ID for Jenkins credentials"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# Argo CD Variables
+variable "argocd_github_username" {
+  description = "GitHub username for Argo CD repository access"
+  type        = string
+  default     = ""
+}
+
+variable "argocd_github_token" {
+  description = "GitHub personal access token for Argo CD repository access"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "argocd_git_repository_url" {
+  description = "Git repository URL for Argo CD to monitor"
+  type        = string
+  default     = "https://github.com/vladyslav-panchenko280/django-jenkins-app.git"
+}
+
+variable "argocd_admin_password" {
+  description = "Admin password for Argo CD (bcrypt hashed). Generate with: htpasswd -nbBC 10 '' $PASSWORD | tr -d ':\\n' | sed 's/$2y/$2a/'"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
