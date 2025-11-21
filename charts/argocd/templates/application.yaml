@@ -1,0 +1,32 @@
+{{- if .Values.djangoApp.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: django-app-{{ .Values.environment }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "10"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: {{ .Values.gitRepository.url }}
+    targetRevision: {{ .Values.djangoApp.targetRevision | default "main" }}
+    path: {{ .Values.djangoApp.path | default "charts/django-app" }}
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-{{ .Values.environment }}.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: django-{{ .Values.environment }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+{{- end }}

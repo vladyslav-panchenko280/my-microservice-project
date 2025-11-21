@@ -1,4 +1,3 @@
-# Storage class for Jenkins persistent volume
 resource "kubernetes_storage_class_v1" "ebs_sc" {
   metadata {
     name = "ebs-sc"

@@ -1,6 +1,3 @@
-# S3 backend is created manually outside of Terraform
-# to avoid chicken-and-egg problem with state storage
-
 data "aws_eks_cluster" "eks" {
   name = var.cluster_name
 
@@ -65,6 +62,23 @@ module "jenkins" {
   github_token           = var.jenkins_github_token
   jenkins_admin_password = var.jenkins_admin_password
   aws_account_id         = var.aws_account_id
+
+  providers = {
+    kubernetes = kubernetes
+    helm       = helm
+  }
+}
+
+module "argocd" {
+  source                = "./modules/argocd"
+  cluster_name          = var.cluster_name
+  environment           = var.environment
+  oidc_provider_arn     = module.eks.oidc_provider_arn
+  oidc_provider_url     = module.eks.oidc_provider_url
+  github_username       = var.argocd_github_username
+  github_token          = var.argocd_github_token
+  git_repository_url    = var.argocd_git_repository_url
+  argocd_admin_password = var.argocd_admin_password
 
   providers = {
     kubernetes = kubernetes

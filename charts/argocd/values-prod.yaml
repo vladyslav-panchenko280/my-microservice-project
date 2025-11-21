@@ -1,0 +1,75 @@
+environment: prod
+
+argo-cd:
+  global:
+    logging:
+      level: warn
+
+  server:
+    replicas: 3
+    service:
+      type: LoadBalancer
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+        service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+    autoscaling:
+      enabled: true
+      minReplicas: 3
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
+
+  repoServer:
+    replicas: 3
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+    autoscaling:
+      enabled: true
+      minReplicas: 3
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+
+  controller:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+
+  redis:
+    enabled: false
+
+  redis-ha:
+    enabled: true
+    haproxy:
+      enabled: true
+    replicas: 3
+
+  applicationSet:
+    replicas: 2
+
+  configs:
+    cm:
+      timeout.reconciliation: 180s
+
+    params:
+      controller.status.processors: 50
+      controller.operation.processors: 25

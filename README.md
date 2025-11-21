@@ -8,6 +8,7 @@ This project implements a complete GitOps workflow with:
 - **Infrastructure as Code**: Terraform manages AWS resources (VPC, EKS, ECR)
 - **Container Orchestration**: Kubernetes on AWS EKS
 - **CI/CD Pipeline**: Jenkins with automated builds and deployments
+- **GitOps CD**: Argo CD for continuous delivery and automatic sync
 - **Environment-Specific Builds**: Separate Dockerfiles for dev/stage/prod
 - **Image Registry**: AWS ECR with environment-specific repositories
 - **Service Exposure**: LoadBalancer for direct access (no domain required)
@@ -31,7 +32,8 @@ enterprise-suite-infrastructure/
 │   │   ├── vpc/                # VPC with public/private subnets
 │   │   ├── ecr/                # Container registry
 │   │   ├── eks/                # Kubernetes cluster + EBS CSI driver
-│   │   └── jenkins/            # Jenkins with IRSA for ECR access
+│   │   ├── jenkins/            # Jenkins with IRSA for ECR access
+│   │   └── argocd/             # Argo CD GitOps deployment
 │   ├── main.tf
 │   ├── variables.tf
 │   ├── outputs.tf
@@ -42,11 +44,17 @@ enterprise-suite-infrastructure/
 │   │   ├── values-dev.yaml     # Dev overrides
 │   │   ├── values-stage.yaml   # Stage overrides
 │   │   └── values-prod.yaml    # Prod overrides
-│   └── jenkins/                # Jenkins deployment
+│   ├── jenkins/                # Jenkins deployment
+│   │   ├── values.yaml         # Base configuration
+│   │   ├── values-dev.yaml     # Dev jobs
+│   │   ├── values-stage.yaml   # Stage jobs
+│   │   └── values-prod.yaml    # Prod jobs
+│   └── argocd/                 # Argo CD deployment
+│       ├── Chart.yaml          # Chart with argo-cd dependency
 │       ├── values.yaml         # Base configuration
-│       ├── values-dev.yaml     # Dev jobs
-│       ├── values-stage.yaml   # Stage jobs
-│       └── values-prod.yaml    # Prod jobs
+│       ├── values-dev.yaml     # Dev environment
+│       ├── values-stage.yaml   # Stage environment
+│       └── values-prod.yaml    # Prod environment
 ├── services/
 │   └── django-app/
 │       ├── django_app/         # Django application
@@ -496,6 +504,87 @@ stage('Update Deployment Repo') {
 }
 ```
 
+## Argo CD (GitOps)
+
+Argo CD provides continuous delivery with automatic synchronization from Git.
+
+### Features
+
+- **Automatic Sync**: Monitors Git repository and automatically deploys changes
+- **Self-Healing**: Automatically reverts manual changes in cluster
+- **Multi-Environment**: Separate configurations for dev/stage/prod
+- **IRSA Integration**: Uses IAM Roles for Service Accounts for ECR access
+
+### Architecture
+
+```
+Git Repository (django-jenkins-app)
+        │
+        ▼
+   Argo CD Application
+        │
+        ▼
+   Helm Chart (charts/django-app)
+        │
+        ▼
+   Kubernetes Deployment
+```
+
+### Configuration
+
+Argo CD Application is configured in `charts/argocd/templates/application.yaml`:
+- **Source**: Git repository with Helm chart
+- **Target Revision**: Branch based on environment (main for prod, environment name for others)
+- **Sync Policy**: Automated with prune and self-heal enabled
+
+### Accessing Argo CD UI
+
+```bash
+# Get admin password
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+
+# Port forward to access UI
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+
+# Open https://localhost:8080
+# Login: admin / <password from above>
+```
+
+### Argo CD Application Status
+
+```bash
+# List all applications
+kubectl get applications -n argocd
+
+# Get detailed status
+kubectl get applications -n argocd -o wide
+
+# Describe application
+kubectl describe application django-app-dev -n argocd
+```
+
+### Testing Auto-Sync
+
+1. Make a change to `charts/django-app/values-dev.yaml` in Git
+2. Commit and push the change
+3. Wait for Argo CD to detect the change (default: 3 minutes)
+4. Verify sync status:
+
+```bash
+kubectl get applications -n argocd
+# Status should show "Synced" and "Healthy"
+```
+
+### Manual Sync
+
+```bash
+# Using argocd CLI
+argocd app sync django-app-dev
+
+# Or trigger via kubectl
+kubectl patch application django-app-dev -n argocd --type merge -p '{"operation":{"initiatedBy":{"username":"admin"},"sync":{}}}'
+```
+
 ## Additional Resources
 
 - [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
@@ -505,3 +594,4 @@ stage('Update Deployment Repo') {
 - [AWS EKS Documentation](https://docs.aws.amazon.com/eks/)
 - [Jenkins Pipeline Syntax](https://www.jenkins.io/doc/book/pipeline/syntax/)
 - [AWS ECR Documentation](https://docs.aws.amazon.com/ecr/)
+- [Argo CD Documentation](https://argo-cd.readthedocs.io/)
