@@ -31,17 +31,12 @@ configMap:
     DJANGO_SETTINGS_MODULE: django_app.settings
     DEBUG: "False"
     ENVIRONMENT: stage
-    ALLOWED_HOSTS: "*"  # LoadBalancer DNS name will be dynamic
+    ALLOWED_HOSTS: "*"
 
-env:
-  - name: DATABASE_URL
-    valueFrom:
-      secretKeyRef:
-        name: django-db-secret
-        key: database-url
+env: []
 
-postgresql:
-  enabled: false
+database:
+  secretName: django-db-credentials
 
 nginx:
   enabled: true

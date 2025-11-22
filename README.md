@@ -32,6 +32,7 @@ enterprise-suite-infrastructure/
 │   │   ├── vpc/                # VPC with public/private subnets
 │   │   ├── ecr/                # Container registry
 │   │   ├── eks/                # Kubernetes cluster + EBS CSI driver
+│   │   ├── rds/                # Aurora PostgreSQL / RDS database
 │   │   ├── jenkins/            # Jenkins with IRSA for ECR access
 │   │   └── argocd/             # Argo CD GitOps deployment
 │   ├── main.tf
@@ -171,7 +172,10 @@ This creates:
 - VPC with public/private subnets
 - EKS cluster with node groups
 - ECR repositories (es-ecr-dev, es-ecr-stage, es-ecr-prod)
+- RDS Aurora PostgreSQL / Standard RDS database
 - Jenkins with IRSA permissions
+- Argo CD for GitOps deployments
+- Kubernetes secrets for Django database credentials
 
 
 ## Accessing the Application
@@ -274,6 +278,292 @@ helm rollback django-app -n django-dev
 helm rollback django-app 2 -n django-dev
 ```
 
+## RDS Module Documentation
+
+### Module Usage Example
+
+Basic module instantiation in `infrastructure/main.tf`:
+
+```hcl
+module "rds" {
+  source = "./modules/rds"
+
+  name                    = var.db_name
+  db_name                 = var.db_database_name
+  username                = var.db_username
+  password                = var.db_password
+  vpc_id                  = module.vpc.vpc_id
+  subnet_private_ids      = module.vpc.private_subnet_ids
+  subnet_public_ids       = module.vpc.public_subnet_ids
+
+  use_aurora              = var.db_use_aurora
+  engine                  = var.db_engine
+  engine_version          = var.db_engine_version
+  instance_class          = var.db_instance_class
+  allocated_storage       = var.db_allocated_storage
+
+  multi_az                = var.db_multi_az
+  publicly_accessible     = var.db_publicly_accessible
+  backup_retention_period = var.db_backup_retention_period
+
+  db_parameters           = var.db_parameters
+  tags                    = var.tags
+}
+```
+
+### Database Variables
+
+**Required:**
+- `db_name` - Database instance or cluster name
+- `db_database_name` - Initial database name
+- `db_username` - Master user username
+- `db_password` - Master user password (use AWS Secrets Manager for production)
+
+**Core Configuration:**
+- `db_engine` - Database engine type: `postgres`, `mysql`, `mariadb`, `oracle-se2`, `sqlserver-se` (default: `postgres`)
+- `db_engine_version` - Engine version for standard RDS (default: `14.7`)
+- `db_use_aurora` - Enable Aurora (default: `false`)
+- `db_instance_class` - Instance class: `db.t3.micro`, `db.t3.small`, `db.r5.large`, `db.r5.xlarge`, etc. (default: `db.t3.micro`)
+- `db_allocated_storage` - Storage size in GB (default: `20`, Aurora scales automatically)
+
+**Availability & Backup:**
+- `db_multi_az` - Enable Multi-AZ for high availability (default: `false`)
+- `db_publicly_accessible` - Allow public internet access to database (default: `false`)
+- `db_backup_retention_period` - Number of days to retain backups
+- `db_aurora_instance_count` - Total Aurora instances (default: `2`)
+
+**Performance Parameters:**
+
+The `db_parameters` variable accepts key-value pairs for database tuning:
+
+```hcl
+db_parameters = {
+  max_connections = 100    # Maximum concurrent connections
+  log_statement   = "all"   # Query logging level: "all", "mod", "ddl", "none"
+  work_mem        = "4MB"   # Memory for sorting and hashing operations
+}
+```
+
+**Parameter Values by Environment:**
+
+- **Development**: `max_connections: 100`, `log_statement: "all"`, `work_mem: "4MB"`
+- **Staging**: `max_connections: 300`, `log_statement: "mod"`, `work_mem: "8MB"`
+- **Production**: `max_connections: 1000`, `log_statement: "mod"`, `work_mem: "32MB"`
+
+### How to Change Database Configuration
+
+#### 1. Change Database Type (RDS ↔ Aurora)
+
+**Switch from Standard RDS to Aurora:**
+
+```hcl
+# In terraform.tfvars
+db_use_aurora            = true
+db_aurora_instance_count = 2
+db_engine_version        = "15.3"
+```
+
+**Switch from Aurora to Standard RDS:**
+
+```hcl
+# In terraform.tfvars
+db_use_aurora            = false
+db_engine                = "postgres"
+db_engine_version        = "15.2"
+db_allocated_storage     = 20
+```
+
+#### 2. Change Database Engine
+
+**PostgreSQL:**
+```hcl
+db_engine         = "postgres"
+db_engine_version = "15.2"
+```
+
+**MySQL:**
+```hcl
+db_engine         = "mysql"
+db_engine_version = "8.0.35"
+```
+
+**MariaDB:**
+```hcl
+db_engine         = "mariadb"
+db_engine_version = "10.6.14"
+```
+
+**Oracle SE2:**
+```hcl
+db_engine         = "oracle-se2"
+db_engine_version = "19.0.0.0.ru-2024-01.1"
+```
+
+#### 3. Change Instance Class (Performance Tier)
+
+**Budget Options (Development/Testing):**
+- `db.t3.micro` - 1 vCPU, 1 GB RAM
+- `db.t3.small` - 1 vCPU, 2 GB RAM
+- `db.t3.medium` - 2 vCPU, 4 GB RAM
+
+**Standard Options (General Purpose):**
+- `db.m5.large` - 2 vCPU, 8 GB RAM
+- `db.m5.xlarge` - 4 vCPU, 16 GB RAM
+- `db.m5.2xlarge` - 8 vCPU, 32 GB RAM
+
+**Memory Optimized (High Performance):**
+- `db.r5.large` - 2 vCPU, 16 GB RAM
+- `db.r5.xlarge` - 4 vCPU, 32 GB RAM
+- `db.r6g.large` - 2 vCPU, 16 GB RAM (Graviton2, more cost-efficient)
+- `db.r6g.xlarge` - 4 vCPU, 32 GB RAM
+
+**Example: Scale up for production**
+```hcl
+db_instance_class = "db.r6g.xlarge"  # Powerful instance for production
+```
+
+#### 4. Adjust Database Parameters
+
+Add custom parameters through the `parameters` variable in the RDS module (in `variables.tf`):
+
+```hcl
+# In terraform.tfvars
+parameters = {
+  "shared_preload_libraries" = "pg_stat_statements"
+  "maintenance_work_mem"     = "256MB"
+  "effective_cache_size"     = "2GB"
+  "random_page_cost"         = "1.1"
+}
+```
+
+Combine standard and custom parameters:
+```hcl
+db_parameters = {
+  max_connections = 500
+  log_statement   = "mod"
+  work_mem        = "16MB"
+}
+
+parameters = {
+  "shared_preload_libraries" = "pg_stat_statements"
+  "effective_cache_size"     = "4GB"
+}
+```
+
+### Database Configuration in terraform.tfvars
+
+All database settings are configured via environment-specific `terraform.tfvars` files
+
+### Kubernetes Database Secret
+
+Terraform automatically creates a Kubernetes secret with database credentials:
+
+```bash
+# Verify the secret was created
+kubectl get secret django-db-credentials -o yaml
+
+# Secret contains:
+# - DB_HOST: Aurora cluster endpoint / RDS address
+# - DB_PORT: 5432 (default)
+# - DB_NAME: Database name
+# - DB_USER: Master username
+# - DB_PASSWORD: Master password
+```
+
+### Django Integration
+
+Django settings automatically use the database credentials:
+
+**In Kubernetes pods**, environment variables are injected from the secret:
+```yaml
+env:
+  - name: DB_HOST
+    valueFrom:
+      secretKeyRef:
+        name: django-db-credentials
+        key: DB_HOST
+  - name: DB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: django-db-credentials
+        key: DB_PASSWORD
+```
+
+**In `settings.py`**, Django reads these env vars:
+```python
+if os.environ.get('DB_HOST'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', 'myapp'),
+            'USER': os.environ.get('DB_USER', 'postgres'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': os.environ.get('DB_HOST'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+        }
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+```
+
+### Database Connection
+
+```bash
+# Get database endpoint
+terraform output db_host
+
+# Connect to database
+psql -h <db_host> -U postgres -d myapp
+
+# Connection string for Django
+DATABASE_URL="postgres://postgres:password@<db_host>:5432/myapp"
+```
+
+### Database Migrations
+
+```bash
+# From within a Django pod
+kubectl exec -it -n django-dev <pod-name> -- python manage.py migrate
+
+# Or via local environment with port forwarding
+kubectl port-forward -n django-dev svc/postgres 5432:5432 &
+python manage.py migrate --database=<remote-db>
+```
+
+### Backing Up and Restoring
+
+Aurora automatically creates backups. For manual backup:
+
+```bash
+# Using AWS CLI
+aws rds create-db-cluster-snapshot \
+  --db-cluster-snapshot-identifier myapp-snapshot \
+  --db-cluster-identifier myapp-db-prod
+
+# Check snapshot status
+aws rds describe-db-cluster-snapshots \
+  --db-cluster-snapshot-identifier myapp-snapshot
+```
+
+### Monitoring Database Performance
+
+```bash
+# AWS CloudWatch metrics (optional - requires CloudWatch configuration)
+aws cloudwatch get-metric-statistics \
+  --namespace AWS/RDS \
+  --metric-name DatabaseConnections \
+  --dimensions Name=DBInstanceIdentifier,Value=myapp-db-prod \
+  --start-time 2025-01-01T00:00:00Z \
+  --end-time 2025-01-02T00:00:00Z \
+  --period 300 \
+  --statistics Average
+```
+
 ## Managing Secrets
 
 ### GitHub Credentials for Jenkins
@@ -285,16 +575,18 @@ jenkins_github_username = "your-username"
 jenkins_github_token    = "ghp_token_here"
 ```
 
-### Database Secrets (Stage/Prod)
+### Database Secrets (Production)
+
+For production environments, store `db_password` in AWS Secrets Manager instead of tfvars:
 
 ```bash
-kubectl create secret generic django-db-secret \
-  --from-literal=database-url="postgresql://user:password@rds-endpoint:5432/dbname" \
-  --namespace=django-stage
+# Store password in Secrets Manager
+aws secretsmanager create-secret \
+  --name prod/db-password \
+  --secret-string "YourSecurePassword123!"
 
-kubectl create secret generic django-db-secret \
-  --from-literal=database-url="postgresql://user:password@rds-endpoint:5432/dbname" \
-  --namespace=django-prod
+# Reference in Terraform (configure in prod tfvars)
+db_password = "YourSecurePassword123!"  # Retrieved from Secrets Manager
 ```
 
 ### Django SECRET_KEY
@@ -506,10 +798,48 @@ kubectl patch application django-app-dev -n argocd --type merge -p '{"operation"
 ## Additional Resources
 
 - [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
+- [AWS RDS Documentation](https://docs.aws.amazon.com/rds/)
+- [AWS Aurora PostgreSQL](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Aurora.html)
 - [Helm Documentation](https://helm.sh/docs/)
 - [Kubernetes Documentation](https://kubernetes.io/docs/)
 - [Django Deployment Checklist](https://docs.djangoproject.com/en/stable/howto/deployment/checklist/)
+- [Django Database Settings](https://docs.djangoproject.com/en/stable/ref/settings/#databases)
 - [AWS EKS Documentation](https://docs.aws.amazon.com/eks/)
 - [Jenkins Pipeline Syntax](https://www.jenkins.io/doc/book/pipeline/syntax/)
 - [AWS ECR Documentation](https://docs.aws.amazon.com/ecr/)
 - [Argo CD Documentation](https://argo-cd.readthedocs.io/)
+- [AWS Secrets Manager](https://docs.aws.amazon.com/secretsmanager/)
+
+## RDS Module Reusability
+
+The RDS module is fully reusable and can be instantiated multiple times for different databases:
+
+```hcl
+# Additional database instance example
+module "rds_analytics" {
+  source = "./modules/rds"
+
+  name                  = "analytics-db"
+  db_name              = "analytics"
+  use_aurora           = true
+  aurora_instance_count = 2
+  instance_class       = "db.r6g.large"
+  db_username          = "analytics_user"
+  password             = var.analytics_db_password
+
+  subnet_private_ids      = module.vpc.private_subnet_ids
+  subnet_public_ids       = module.vpc.public_subnet_ids
+  vpc_id                  = module.vpc.vpc_id
+  multi_az                = true
+  backup_retention_period = 30
+
+  tags = var.tags
+}
+```
+
+Each module instance creates:
+- Independent RDS instance or Aurora cluster
+- Separate security group with database rules
+- Dedicated subnet group
+- Custom parameter groups
+- Unique outputs for application connection

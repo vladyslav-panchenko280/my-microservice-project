@@ -85,3 +85,52 @@ module "argocd" {
     helm       = helm
   }
 }
+
+module "rds" {
+  source = "./modules/rds"
+
+  name                  = var.db_name
+  use_aurora            = var.db_use_aurora
+  aurora_instance_count = var.db_aurora_instance_count
+
+  engine_cluster                = "aurora-postgresql"
+  engine_version_cluster        = "15.4"
+  parameter_group_family_aurora = "aurora-postgresql15"
+
+  engine                     = "postgres"
+  engine_version             = "17.2"
+  parameter_group_family_rds = "postgres17"
+
+  instance_class          = var.db_instance_class
+  allocated_storage       = var.db_allocated_storage
+  db_name                 = var.db_database_name
+  username                = var.db_username
+  password                = var.db_password
+  subnet_private_ids      = module.vpc.private_subnet_ids
+  subnet_public_ids       = module.vpc.public_subnet_ids
+  publicly_accessible     = var.db_publicly_accessible
+  vpc_id                  = module.vpc.vpc_id
+  multi_az                = var.db_multi_az
+  backup_retention_period = var.db_backup_retention_period
+  tags                    = var.tags
+  parameters              = var.db_parameters
+}
+
+resource "kubernetes_secret" "django_db" {
+  metadata {
+    name      = "django-db-credentials"
+    namespace = "default"
+  }
+
+  data = {
+    DB_HOST     = module.rds.db_host
+    DB_PORT     = tostring(module.rds.db_port)
+    DB_NAME     = module.rds.db_name
+    DB_USER     = module.rds.db_username
+    DB_PASSWORD = module.rds.db_password
+  }
+
+  type = "Opaque"
+
+  depends_on = [module.eks]
+}

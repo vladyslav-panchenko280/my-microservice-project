@@ -28,14 +28,12 @@ configMap:
     DJANGO_SETTINGS_MODULE: django_app.settings
     DEBUG: "True"
     ENVIRONMENT: dev
-    ALLOWED_HOSTS: "*"  # Allow all hosts for development
+    ALLOWED_HOSTS: "*" 
 
-env:
-  - name: DATABASE_URL
-    valueFrom:
-      secretKeyRef:
-        name: django-db-secret
-        key: database-url
+env: []
+
+database:
+  secretName: django-db-credentials
 
 nginx:
   enabled: true
