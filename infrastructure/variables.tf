@@ -237,19 +237,68 @@ variable "prometheus_values_file" {
 }
 
 variable "prometheus_storage_class" {
-  description = "Storage class for Prometheus and Grafana persistent volumes"
+  description = "Storage class for Prometheus persistent volumes"
   type        = string
   default     = "gp3"
 }
 
-variable "prometheus_grafana_password" {
-  description = "Admin password for Grafana"
+variable "prometheus_set_values" {
+  description = "Additional Helm chart values to set for Prometheus"
+  type        = map(string)
+  default     = {}
+}
+
+variable "grafana_namespace" {
+  description = "Kubernetes namespace for Grafana"
+  type        = string
+  default     = "monitoring"
+}
+
+variable "grafana_release_name" {
+  description = "Helm release name for Grafana"
+  type        = string
+  default     = "grafana"
+}
+
+variable "grafana_chart_version" {
+  description = "Version of Grafana Helm chart"
+  type        = string
+  default     = "7.0.8"
+}
+
+variable "grafana_values_file" {
+  description = "Environment-specific values file name for Grafana (e.g., values-dev.yaml)"
+  type        = string
+  default     = ""
+}
+
+variable "grafana_storage_class" {
+  description = "Storage class for Grafana persistent volumes"
+  type        = string
+  default     = "gp3"
+}
+
+variable "grafana_admin_user" {
+  description = "Admin username for Grafana"
+  type        = string
+  sensitive   = true
+  default     = "admin"
+}
+
+variable "grafana_admin_password" {
+  description = "Admin password for Grafana (use AWS Secrets Manager in production)"
   type        = string
   sensitive   = true
 }
 
-variable "prometheus_set_values" {
-  description = "Additional Helm chart values to set for Prometheus"
+variable "grafana_prometheus_url" {
+  description = "Prometheus server URL for Grafana data source"
+  type        = string
+  default     = "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
+}
+
+variable "grafana_set_values" {
+  description = "Additional Helm chart values to set for Grafana"
   type        = map(string)
   default     = {}
 }

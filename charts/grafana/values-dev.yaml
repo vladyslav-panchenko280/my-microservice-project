@@ -1,0 +1,29 @@
+environment: dev
+
+grafana:
+  replicas: 1
+
+  service:
+    type: NodePort
+
+  persistence:
+    enabled: true
+    storageClassName: gp3
+    size: 5Gi
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+  podDisruptionBudget:
+    minAvailable: 0
+
+  grafana.ini:
+    log:
+      level: debug
+
+namespace: monitoring

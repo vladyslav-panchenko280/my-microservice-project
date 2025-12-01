@@ -1,0 +1,63 @@
+environment: prod
+
+grafana:
+  replicas: 3
+
+  service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+      service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
+
+  persistence:
+    enabled: true
+    storageClassName: gp3
+    size: 50Gi
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+  podDisruptionBudget:
+    minAvailable: 2
+
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - grafana
+          topologyKey: kubernetes.io/hostname
+
+  tolerations:
+    - key: "monitoring"
+      operator: "Equal"
+      value: "true"
+      effect: "NoSchedule"
+
+  grafana.ini:
+    server:
+      root_url: "https://grafana.yourdomain.com"
+    security:
+      cookie_secure: true
+      cookie_samesite: strict
+    log:
+      level: warn
+    auth:
+      disable_login_form: false
+      oauth_auto_login: false
+
+  smtp:
+    enabled: false
+
+  alerting:
+    enabled: true
+
+namespace: monitoring

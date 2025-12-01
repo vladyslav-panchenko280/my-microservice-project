@@ -49,7 +49,7 @@ db_backup_retention_period = 7                        # Days to retain backups
 db_parameters = {
   max_connections = 100
   log_statement   = "all"
-  work_mem        = "4MB"}
+  work_mem        = "4096"}
 
 prometheus_namespace        = "monitoring"
 prometheus_release_name     = "prometheus"

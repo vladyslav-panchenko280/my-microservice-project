@@ -33,23 +33,7 @@ kube-prometheus-stack:
         enabled: false
 
   grafana:
-    adminPassword: "dev-admin"
-
-    service:
-      type: NodePort
-
-    persistence:
-      enabled: true
-      storageClassName: gp3
-      size: 5Gi
-
-    resources:
-      requests:
-        cpu: 50m
-        memory: 128Mi
-      limits:
-        cpu: 250m
-        memory: 256Mi
+    enabled: false
 
   alertmanager:
     enabled: true

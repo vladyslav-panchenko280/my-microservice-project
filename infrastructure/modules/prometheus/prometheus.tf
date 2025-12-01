@@ -16,46 +16,31 @@ resource "helm_release" "prometheus" {
   version    = var.chart_version
   namespace  = kubernetes_namespace.monitoring.metadata[0].name
 
-
-  values = [
-    file("${path.module}/../../../charts/prometheus/values.yaml")
-  ]
-
-
-  values = var.values_file != "" ? [
-    file("${path.module}/../../../charts/prometheus/${var.values_file}")
-  ] : []
-
-
-  dynamic "set" {
-    for_each = var.set_values
-    content {
-      name  = set.key
-      value = set.value
-    }
-  }
-
-  set {
-    name  = "environment"
-    value = var.environment
-  }
-
-  set {
-    name  = "namespace"
-    value = var.namespace
-  }
-
-
-  set {
-    name  = "prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.storageClassName"
-    value = var.storage_class
-  }
-
-
-  set_sensitive {
-    name  = "grafana.adminPassword"
-    value = var.grafana_admin_password
-  }
+  values = concat(
+    [
+      file("${path.module}/../../../charts/prometheus/values.yaml")
+    ],
+    var.values_file != "" ? [
+      file("${path.module}/../../../charts/prometheus/${var.values_file}")
+    ] : [],
+    [
+      yamlencode({
+        environment = var.environment
+        namespace   = var.namespace
+        prometheus = {
+          prometheusSpec = {
+            storageSpec = {
+              volumeClaimTemplate = {
+                spec = {
+                  storageClassName = var.storage_class
+                }
+              }
+            }
+          }
+        }
+      })
+    ]
+  )
 
   timeout       = 600
   wait          = true
