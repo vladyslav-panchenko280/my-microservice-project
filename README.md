@@ -5,10 +5,12 @@ A comprehensive infrastructure setup for deploying Django applications across de
 ## Architecture Overview
 
 This project implements a complete GitOps workflow with:
-- **Infrastructure as Code**: Terraform manages AWS resources (VPC, EKS, ECR)
+- **Infrastructure as Code**: Terraform manages AWS resources (VPC, EKS, ECR, RDS)
 - **Container Orchestration**: Kubernetes on AWS EKS
 - **CI/CD Pipeline**: Jenkins with automated builds and deployments
 - **GitOps CD**: Argo CD for continuous delivery and automatic sync
+- **Monitoring & Observability**: Prometheus + Grafana stack for metrics and alerting
+- **Database**: Aurora PostgreSQL / RDS with automated backups
 - **Environment-Specific Builds**: Separate Dockerfiles for dev/stage/prod
 - **Image Registry**: AWS ECR with environment-specific repositories
 - **Service Exposure**: LoadBalancer for direct access (no domain required)
@@ -45,8 +47,14 @@ enterprise-suite-infrastructure/
 │   │   ├── values-dev.yaml     # Dev jobs
 │   │   ├── values-stage.yaml   # Stage jobs
 │   │   └── values-prod.yaml    # Prod jobs
-│   └── argocd/                 # Argo CD deployment
-│       ├── Chart.yaml          # Chart with argo-cd dependency
+│   ├── argocd/                 # Argo CD deployment
+│   │   ├── Chart.yaml          # Chart with argo-cd dependency
+│   │   ├── values.yaml         # Base configuration
+│   │   ├── values-dev.yaml     # Dev environment
+│   │   ├── values-stage.yaml   # Stage environment
+│   │   └── values-prod.yaml    # Prod environment
+│   └── prometheus/             # Prometheus monitoring
+│       ├── Chart.yaml          # Chart with kube-prometheus-stack dependency
 │       ├── values.yaml         # Base configuration
 │       ├── values-dev.yaml     # Dev environment
 │       ├── values-stage.yaml   # Stage environment
@@ -795,6 +803,249 @@ argocd app sync django-app-dev
 kubectl patch application django-app-dev -n argocd --type merge -p '{"operation":{"initiatedBy":{"username":"admin"},"sync":{}}}'
 ```
 
+## Prometheus Monitoring Stack
+
+This project includes a comprehensive monitoring solution using the Prometheus ecosystem.
+
+### Architecture
+
+The monitoring stack includes:
+- **Prometheus**: Time-series database for metrics collection
+- **Grafana**: Visualization and dashboarding
+- **Alertmanager**: Alert routing and management
+- **Node Exporter**: Hardware and OS metrics
+- **Kube State Metrics**: Kubernetes cluster state metrics
+- **Prometheus Operator**: Kubernetes-native Prometheus management
+
+### Deployment via Terraform
+
+Prometheus is deployed automatically when you apply Terraform:
+
+```bash
+# Deploy infrastructure with monitoring
+./scripts/terraform-apply.sh dev
+```
+
+The Prometheus module is configured in [infrastructure/main.tf](infrastructure/main.tf:89-107) and creates:
+- `monitoring` namespace
+- Prometheus server with persistent storage
+- Grafana with preconfigured dashboards
+- Alertmanager for alert routing
+- ServiceMonitors for automatic metric discovery
+
+### Environment-Specific Configuration
+
+#### Development
+- **Resources**: Minimal (dev testing)
+- **Retention**: 7 days
+- **Storage**: 20GB
+- **Replicas**: Single instance
+- **Access**: NodePort services
+- **Password**: `dev-admin`
+
+#### Staging
+- **Resources**: Balanced (pre-production testing)
+- **Retention**: 15 days
+- **Storage**: 40GB
+- **Replicas**: 2 Prometheus, 2 Alertmanager
+- **Access**: Internal LoadBalancer
+- **Password**: `stage-admin-secure`
+
+#### Production
+- **Resources**: High availability
+- **Retention**: 30 days
+- **Storage**: 100GB
+- **Replicas**: 2 Prometheus, 3 Alertmanager
+- **Access**: Internal LoadBalancer
+- **Password**: Use AWS Secrets Manager
+- **Features**: Pod anti-affinity, custom alerts
+
+### Accessing Monitoring UIs
+
+#### Prometheus UI
+
+```bash
+# Get Prometheus service
+kubectl get svc -n monitoring
+
+# Port forward for local access
+kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090
+
+# Open http://localhost:9090
+```
+
+### Metrics Collection
+
+#### Automatic Kubernetes Monitoring
+
+The stack automatically monitors:
+- Node metrics (CPU, memory, disk, network)
+- Pod metrics (resource usage, restarts, status)
+- Container metrics (CPU, memory, filesystem)
+- Kubernetes API server metrics
+- Kubelet metrics
+- CoreDNS metrics
+
+#### Adding Application Metrics
+
+To expose metrics from your Django application:
+
+**1. Add Prometheus client to Django:**
+
+```python
+# requirements.txt
+django-prometheus==2.3.1
+```
+
+```python
+# settings.py
+INSTALLED_APPS = [
+    'django_prometheus',
+    # ... other apps
+]
+
+MIDDLEWARE = [
+    'django_prometheus.middleware.PrometheusBeforeMiddleware',
+    # ... other middleware
+    'django_prometheus.middleware.PrometheusAfterMiddleware',
+]
+```
+
+```python
+# urls.py
+from django.urls import path, include
+
+urlpatterns = [
+    path('', include('django_prometheus.urls')),
+    # ... other urls
+]
+```
+
+**2. Create ServiceMonitor for Django app:**
+
+```yaml
+# In your Helm chart values
+prometheus:
+  monitor:
+    enabled: true
+    interval: 30s
+    path: /metrics
+```
+
+**3. Or create custom ServiceMonitor:**
+
+```bash
+kubectl apply -f - <<EOF
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: django-app
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: django-app
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+EOF
+```
+
+### Custom Alerts
+
+Production environment includes sample alerts:
+
+- **DjangoAppDown**: Triggers when application is unavailable
+- **HighRequestLatency**: 95th percentile > 1s for 10 minutes
+- **HighErrorRate**: 5xx errors > 5% for 5 minutes
+
+Add custom alerts by editing [charts/prometheus/values-prod.yaml](charts/prometheus/values-prod.yaml:204-249).
+
+### Alerting Configuration
+
+Configure alert receivers in terraform.tfvars:
+
+```hcl
+prometheus_set_values = {
+  "alertmanager.config.receivers[0].slack_configs[0].api_url" = "https://hooks.slack.com/services/YOUR/WEBHOOK"
+  "alertmanager.config.receivers[0].slack_configs[0].channel" = "#alerts"
+}
+```
+
+Or update [values-{env}.yaml](charts/prometheus/) files directly.
+
+### Troubleshooting
+
+#### Check Prometheus targets:
+
+```bash
+kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090
+# Visit http://localhost:9090/targets
+```
+
+#### View Prometheus logs:
+
+```bash
+kubectl logs -n monitoring -l app.kubernetes.io/name=prometheus
+```
+
+#### Reset Grafana password:
+
+```bash
+# Get admin password from Helm values
+terraform output -json | jq -r '.prometheus_grafana_password.value'
+
+# Or reset via kubectl
+kubectl exec -it -n monitoring deployment/prometheus-grafana -- grafana-cli admin reset-admin-password newpassword
+```
+
+### Storage Management
+
+#### Check PVC usage:
+
+```bash
+kubectl get pvc -n monitoring
+kubectl describe pvc -n monitoring
+```
+
+### Backup and Restore
+
+#### Backup Prometheus data:
+
+```bash
+# Create snapshot of Prometheus PVC
+kubectl exec -n monitoring prometheus-kube-prometheus-prometheus-0 -- tar czf /tmp/prometheus-backup.tar.gz /prometheus
+
+# Copy backup
+kubectl cp monitoring/prometheus-kube-prometheus-prometheus-0:/tmp/prometheus-backup.tar.gz ./prometheus-backup.tar.gz
+```
+
+### Performance Tuning
+
+For production workloads, tune Prometheus in [values-prod.yaml](charts/prometheus/values-prod.yaml):
+
+```yaml
+prometheus:
+  prometheusSpec:
+    # Adjust retention based on storage
+    retention: 30d
+    retentionSize: "100GB"
+
+    # Scale resources for large clusters
+    resources:
+      requests:
+        cpu: 2000m
+        memory: 8Gi
+      limits:
+        cpu: 4000m
+        memory: 16Gi
+
+    # Adjust scrape intervals
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+```
+
 ## Additional Resources
 
 - [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
@@ -809,6 +1060,10 @@ kubectl patch application django-app-dev -n argocd --type merge -p '{"operation"
 - [AWS ECR Documentation](https://docs.aws.amazon.com/ecr/)
 - [Argo CD Documentation](https://argo-cd.readthedocs.io/)
 - [AWS Secrets Manager](https://docs.aws.amazon.com/secretsmanager/)
+- [Prometheus Documentation](https://prometheus.io/docs/)
+- [Grafana Documentation](https://grafana.com/docs/)
+- [Prometheus Operator](https://github.com/prometheus-operator/prometheus-operator)
+- [Kube-Prometheus-Stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack)
 
 ## RDS Module Reusability
 

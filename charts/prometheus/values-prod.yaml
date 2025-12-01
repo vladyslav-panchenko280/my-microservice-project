@@ -1,0 +1,259 @@
+environment: prod
+
+kube-prometheus-stack:
+  prometheus:
+    service:
+      type: LoadBalancer
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+        service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
+        service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+
+    prometheusSpec:
+      retention: 30d
+      retentionSize: "100GB"
+
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: gp3
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 100Gi
+
+      resources:
+        requests:
+          cpu: 1000m
+          memory: 4Gi
+        limits:
+          cpu: 4000m
+          memory: 8Gi
+
+      scrapeInterval: 30s
+      evaluationInterval: 30s
+      replicas: 2
+      shards: 1
+      podDisruptionBudget:
+        enabled: true
+        minAvailable: 1
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - prometheus
+              topologyKey: kubernetes.io/hostname
+  grafana:
+    adminPassword: "CHANGE_ME_PRODUCTION_PASSWORD"
+
+    service:
+      type: LoadBalancer
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+        service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
+
+    persistence:
+      enabled: true
+      storageClassName: gp3
+      size: 15Gi
+
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+    replicas: 2
+
+    grafana.ini:
+      server:
+        root_url: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
+      security:
+        admin_user: admin
+        disable_gravatar: true
+        cookie_secure: true
+        cookie_samesite: strict
+      users:
+        allow_sign_up: false
+        auto_assign_org: true
+        auto_assign_org_role: Viewer
+      auth.anonymous:
+        enabled: false
+
+    dashboardProviders:
+      dashboardproviders.yaml:
+        apiVersion: 1
+        providers:
+          - name: 'default'
+            orgId: 1
+            folder: ''
+            type: file
+            disableDeletion: false
+            editable: true
+            options:
+              path: /var/lib/grafana/dashboards/default
+
+  alertmanager:
+    enabled: true
+
+    service:
+      type: ClusterIP
+
+    alertmanagerSpec:
+      replicas: 3
+
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: gp3
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 10Gi
+
+      resources:
+        requests:
+          cpu: 200m
+          memory: 256Mi
+        limits:
+          cpu: 400m
+          memory: 512Mi
+
+      retention: 120h
+
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - alertmanager
+              topologyKey: kubernetes.io/hostname
+
+    config:
+      global:
+        resolve_timeout: 5m
+        # Configure SMTP, Slack, PagerDuty, etc.
+        # smtp_smarthost: 'smtp.example.com:587'
+        # smtp_from: 'alertmanager@example.com'
+        # smtp_auth_username: 'alertmanager'
+        # smtp_auth_password: 'password'
+
+      route:
+        group_by: ['alertname', 'cluster', 'service', 'severity']
+        group_wait: 10s
+        group_interval: 10s
+        repeat_interval: 12h
+        receiver: 'prod-default'
+        routes:
+          - match:
+              severity: critical
+            receiver: 'prod-critical'
+            continue: true
+          - match:
+              severity: warning
+            receiver: 'prod-warning'
+          - match:
+              alertname: Watchdog
+            receiver: 'null'
+
+      receivers:
+        - name: 'null'
+        - name: 'prod-default'
+        - name: 'prod-critical'
+        - name: 'prod-warning'
+
+      inhibit_rules:
+        - source_match:
+            severity: 'critical'
+          target_match:
+            severity: 'warning'
+          equal: ['alertname', 'cluster', 'service']
+
+  prometheus-node-exporter:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 300m
+        memory: 256Mi
+
+    extraArgs:
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
+      - --collector.netclass.ignored-devices=^(veth.*)$
+
+  kube-state-metrics:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 400m
+        memory: 512Mi
+
+    replicas: 2
+
+  prometheusOperator:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+    logLevel: info
+
+  additionalServiceMonitors:
+    - name: django-app-monitor
+      selector:
+        matchLabels:
+          app: django-app
+      endpoints:
+        - port: metrics
+          interval: 30s
+          path: /metrics
+
+  additionalPrometheusRulesMap:
+    django-app-rules:
+      groups:
+        - name: django-app.rules
+          interval: 30s
+          rules:
+            - alert: DjangoAppDown
+              expr: up{job="django-app"} == 0
+              for: 5m
+              labels:
+                severity: critical
+              annotations:
+                summary: "Django application is down"
+                description: "Django application {{ $labels.instance }} has been down for more than 5 minutes."
+
+            - alert: HighRequestLatency
+              expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 1
+              for: 10m
+              labels:
+                severity: warning
+              annotations:
+                summary: "High request latency detected"
+                description: "95th percentile request latency is above 1 second for more than 10 minutes."
+
+            - alert: HighErrorRate
+              expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+              for: 5m
+              labels:
+                severity: critical
+              annotations:
+                summary: "High error rate detected"
+                description: "Error rate is above 5% for more than 5 minutes."
+
+namespace: monitoring

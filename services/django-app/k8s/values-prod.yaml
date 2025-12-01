@@ -27,6 +27,14 @@ autoscaling:
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 80
 
+prometheus:
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    path: /metrics
+    labels:
+      release: prometheus
+
 configMap:
   data:
     DJANGO_SETTINGS_MODULE: django_app.settings
@@ -77,7 +85,6 @@ nginx:
       }
     }
 
-# Pod disruption budget for high availability
 podDisruptionBudget:
   enabled: true
   minAvailable: 2

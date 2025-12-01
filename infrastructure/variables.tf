@@ -212,4 +212,45 @@ variable "db_parameters" {
     log_min_duration_statement = "500"
   }
 }
+variable "prometheus_namespace" {
+  description = "Kubernetes namespace for Prometheus stack"
+  type        = string
+  default     = "monitoring"
+}
+
+variable "prometheus_release_name" {
+  description = "Helm release name for Prometheus"
+  type        = string
+  default     = "prometheus"
+}
+
+variable "prometheus_chart_version" {
+  description = "Version of kube-prometheus-stack Helm chart"
+  type        = string
+  default     = "55.5.0"
+}
+
+variable "prometheus_values_file" {
+  description = "Environment-specific values file name (e.g., values-dev.yaml)"
+  type        = string
+  default     = ""
+}
+
+variable "prometheus_storage_class" {
+  description = "Storage class for Prometheus and Grafana persistent volumes"
+  type        = string
+  default     = "gp3"
+}
+
+variable "prometheus_grafana_password" {
+  description = "Admin password for Grafana"
+  type        = string
+  sensitive   = true
+}
+
+variable "prometheus_set_values" {
+  description = "Additional Helm chart values to set for Prometheus"
+  type        = map(string)
+  default     = {}
+}
 

@@ -51,6 +51,14 @@ db_parameters = {
   log_statement   = "all"
   work_mem        = "4MB"}
 
+prometheus_namespace        = "monitoring"
+prometheus_release_name     = "prometheus"
+prometheus_chart_version    = "55.5.0"
+prometheus_values_file      = "values-dev.yaml"
+prometheus_storage_class    = "gp3"
+prometheus_grafana_password = "dev-admin"
+prometheus_set_values       = {}
+
 # Tags
 tags = {
   Environment = "dev"
