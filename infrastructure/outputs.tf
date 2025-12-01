@@ -41,6 +41,17 @@ output "jenkins_namespace" {
   value = module.jenkins.jenkins_namespace
 }
 
+output "jenkins_admin_username" {
+  description = "Jenkins admin username"
+  value       = module.jenkins.jenkins_admin_username
+}
+
+output "jenkins_admin_password" {
+  description = "Jenkins admin password (use 'terraform output -raw jenkins_admin_password' to view)"
+  value       = module.jenkins.jenkins_admin_password
+  sensitive   = true
+}
+
 output "argocd_namespace" {
   description = "Namespace where Argo CD is installed"
   value       = module.argocd.argocd_namespace
@@ -54,6 +65,17 @@ output "argocd_server_service" {
 output "argocd_url" {
   description = "Command to access Argo CD UI"
   value       = module.argocd.argocd_url
+}
+
+output "argocd_admin_username" {
+  description = "ArgoCD admin username"
+  value       = module.argocd.argocd_admin_username
+}
+
+output "argocd_admin_password" {
+  description = "ArgoCD admin password (use 'terraform output -raw argocd_admin_password' to view)"
+  value       = module.argocd.argocd_admin_password
+  sensitive   = true
 }
 
 output "db_host" {
@@ -100,5 +122,16 @@ output "grafana_service_name" {
 output "grafana_url" {
   description = "Grafana access URL (use kubectl port-forward or LoadBalancer URL)"
   value       = module.grafana.grafana_url
+}
+
+output "grafana_admin_username" {
+  description = "Grafana admin username"
+  value       = module.grafana.grafana_admin_username
+}
+
+output "grafana_admin_password" {
+  description = "Grafana admin password (use 'terraform output -raw grafana_admin_password' to view)"
+  value       = module.grafana.grafana_admin_password
+  sensitive   = true
 }
 

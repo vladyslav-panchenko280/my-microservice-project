@@ -22,3 +22,14 @@ output "jenkins_environment" {
   description = "Environment for this Jenkins deployment"
   value       = var.environment
 }
+
+output "jenkins_admin_username" {
+  description = "Jenkins admin username"
+  value       = var.jenkins_admin_username
+}
+
+output "jenkins_admin_password" {
+  description = "Jenkins admin password"
+  value       = var.jenkins_admin_password
+  sensitive   = true
+}

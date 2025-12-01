@@ -2,9 +2,6 @@ environment: production
 
 jenkins:
   controller:
-    admin:
-      username: admin
-
     installPlugins:
       - kubernetes:latest
       - workflow-aggregator:latest

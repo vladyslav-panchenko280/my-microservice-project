@@ -17,3 +17,14 @@ output "argocd_url" {
   description = "URL to access Argo CD (via port-forward or LoadBalancer)"
   value       = "kubectl port-forward svc/argocd-server -n ${var.argocd_namespace} 8080:443"
 }
+
+output "argocd_admin_username" {
+  description = "ArgoCD admin username"
+  value       = "admin"
+}
+
+output "argocd_admin_password" {
+  description = "ArgoCD admin password"
+  value       = var.argocd_admin_password
+  sensitive   = true
+}

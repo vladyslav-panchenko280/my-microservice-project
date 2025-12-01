@@ -1,20 +1,9 @@
-resource "kubernetes_namespace" "monitoring" {
-  metadata {
-    name = var.namespace
-
-    labels = {
-      name        = var.namespace
-      environment = var.environment
-    }
-  }
-}
-
 resource "helm_release" "grafana" {
   name       = var.release_name
   repository = "https://grafana.github.io/helm-charts"
   chart      = "grafana"
   version    = var.chart_version
-  namespace  = kubernetes_namespace.monitoring.metadata[0].name
+  namespace  = var.namespace
 
   values = concat(
     [
@@ -56,8 +45,4 @@ resource "helm_release" "grafana" {
   reset_values  = false
   force_update  = false
   recreate_pods = false
-
-  depends_on = [
-    kubernetes_namespace.monitoring
-  ]
 }

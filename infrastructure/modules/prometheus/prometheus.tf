@@ -42,11 +42,16 @@ resource "helm_release" "prometheus" {
     ]
   )
 
-  timeout       = 600
-  wait          = true
-  reset_values  = false
-  force_update  = false
-  recreate_pods = false
+  timeout          = 1200
+  wait             = true
+  wait_for_jobs    = false
+  replace          = true
+  cleanup_on_fail  = true
+  atomic           = false
+  reset_values     = false
+  force_update     = false
+  recreate_pods    = false
+  max_history      = 5
 
   depends_on = [
     kubernetes_namespace.monitoring

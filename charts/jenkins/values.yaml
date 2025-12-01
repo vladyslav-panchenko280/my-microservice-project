@@ -2,10 +2,6 @@ environment: dev
 
 jenkins:
   controller:
-    admin:
-      username: admin
-      password: admin123
-
     serviceType: LoadBalancer
     servicePort: 80
     service:

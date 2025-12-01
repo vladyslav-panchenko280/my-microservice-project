@@ -1,6 +1,6 @@
 output "namespace" {
   description = "Kubernetes namespace where Grafana is deployed"
-  value       = kubernetes_namespace.monitoring.metadata[0].name
+  value       = var.namespace
 }
 
 output "release_name" {
@@ -21,4 +21,15 @@ output "grafana_service_name" {
 output "grafana_url" {
   description = "Grafana access URL (use kubectl port-forward or LoadBalancer URL)"
   value       = "http://${var.release_name}.${var.namespace}.svc.cluster.local"
+}
+
+output "grafana_admin_username" {
+  description = "Grafana admin username"
+  value       = var.grafana_admin_user
+}
+
+output "grafana_admin_password" {
+  description = "Grafana admin password"
+  value       = var.grafana_admin_password
+  sensitive   = true
 }

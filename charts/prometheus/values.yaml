@@ -20,7 +20,7 @@ kube-prometheus-stack:
       storageSpec:
         volumeClaimTemplate:
           spec:
-            storageClassName: gp3
+            storageClassName: ebs-sc
             accessModes: ["ReadWriteOnce"]
             resources:
               requests:
@@ -28,11 +28,11 @@ kube-prometheus-stack:
 
       resources:
         requests:
-          cpu: 500m
-          memory: 2Gi
+          cpu: 100m
+          memory: 512Mi
         limits:
-          cpu: 2000m
-          memory: 4Gi
+          cpu: 500m
+          memory: 1Gi
 
       serviceMonitorSelector: {}
       serviceMonitorNamespaceSelector: {}
@@ -60,7 +60,7 @@ kube-prometheus-stack:
       storage:
         volumeClaimTemplate:
           spec:
-            storageClassName: gp3
+            storageClassName: ebs-sc
             accessModes: ["ReadWriteOnce"]
             resources:
               requests:
@@ -68,11 +68,11 @@ kube-prometheus-stack:
 
       resources:
         requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
           cpu: 100m
           memory: 128Mi
-        limits:
-          cpu: 200m
-          memory: 256Mi
 
       retention: 120h
 
@@ -99,11 +99,11 @@ kube-prometheus-stack:
 
     resources:
       requests:
-        cpu: 50m
-        memory: 64Mi
+        cpu: 25m
+        memory: 32Mi
       limits:
-        cpu: 200m
-        memory: 128Mi
+        cpu: 100m
+        memory: 64Mi
 
     prometheus:
       monitor:
@@ -114,11 +114,11 @@ kube-prometheus-stack:
 
     resources:
       requests:
-        cpu: 50m
-        memory: 128Mi
+        cpu: 25m
+        memory: 64Mi
       limits:
-        cpu: 200m
-        memory: 256Mi
+        cpu: 100m
+        memory: 128Mi
 
     prometheus:
       monitor:
@@ -129,41 +129,39 @@ kube-prometheus-stack:
 
     resources:
       requests:
-        cpu: 100m
-        memory: 128Mi
+        cpu: 50m
+        memory: 64Mi
       limits:
-        cpu: 500m
-        memory: 512Mi
+        cpu: 200m
+        memory: 256Mi
 
     tls:
-      enabled: true
+      enabled: false
 
     admissionWebhooks:
-      enabled: true
-      patch:
-        enabled: true
+      enabled: false
 
   coreDns:
-    enabled: true
+    enabled: false
 
   kubelet:
     enabled: true
     namespace: kube-system
 
   kubeApiServer:
-    enabled: true
+    enabled: false
 
   kubeControllerManager:
-    enabled: true
+    enabled: false
 
   kubeScheduler:
-    enabled: true
+    enabled: false
 
   kubeEtcd:
     enabled: false
 
   kubeProxy:
-    enabled: true
+    enabled: false
 
 environment: base
 

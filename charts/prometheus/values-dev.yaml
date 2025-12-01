@@ -12,7 +12,7 @@ kube-prometheus-stack:
       storageSpec:
         volumeClaimTemplate:
           spec:
-            storageClassName: gp3
+            storageClassName: ebs-sc
             accessModes: ["ReadWriteOnce"]
             resources:
               requests:
@@ -42,7 +42,7 @@ kube-prometheus-stack:
       storage:
         volumeClaimTemplate:
           spec:
-            storageClassName: gp3
+            storageClassName: ebs-sc
             accessModes: ["ReadWriteOnce"]
             resources:
               requests:
