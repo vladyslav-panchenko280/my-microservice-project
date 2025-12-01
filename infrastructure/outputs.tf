@@ -77,3 +77,28 @@ output "db_connection_string" {
   sensitive   = false
 }
 
+output "prometheus_namespace" {
+  description = "Kubernetes namespace where Prometheus is deployed"
+  value       = module.prometheus.namespace
+}
+
+output "prometheus_service_name" {
+  description = "Kubernetes service name for Prometheus"
+  value       = module.prometheus.prometheus_service_name
+}
+
+output "grafana_namespace" {
+  description = "Kubernetes namespace where Grafana is deployed"
+  value       = module.grafana.namespace
+}
+
+output "grafana_service_name" {
+  description = "Kubernetes service name for Grafana"
+  value       = module.grafana.grafana_service_name
+}
+
+output "grafana_url" {
+  description = "Grafana access URL (use kubectl port-forward or LoadBalancer URL)"
+  value       = module.grafana.grafana_url
+}
+

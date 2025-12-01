@@ -28,15 +28,9 @@ variable "values_file" {
 }
 
 variable "storage_class" {
-  description = "Storage class for Prometheus and Grafana persistent volumes"
+  description = "Storage class for Prometheus persistent volumes"
   type        = string
   default     = "gp3"
-}
-
-variable "grafana_admin_password" {
-  description = "Admin password for Grafana (use AWS Secrets Manager in production)"
-  type        = string
-  sensitive   = true
 }
 
 variable "set_values" {

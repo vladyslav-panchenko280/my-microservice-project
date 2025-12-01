@@ -48,45 +48,7 @@ kube-prometheus-stack:
         minAvailable: 1
 
   grafana:
-    enabled: true
-
-    adminPassword: "admin"
-
-    service:
-      type: LoadBalancer
-      annotations:
-        service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
-        service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
-
-    persistence:
-      enabled: true
-      storageClassName: gp3
-      size: 10Gi
-
-    resources:
-      requests:
-        cpu: 100m
-        memory: 256Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
-
-    defaultDashboardsEnabled: true
-    defaultDashboardsTimezone: UTC
-
-    datasources:
-      datasources.yaml:
-        apiVersion: 1
-        datasources:
-          - name: Prometheus
-            type: prometheus
-            url: http://prometheus-operated:9090
-            access: proxy
-            isDefault: true
-
-    plugins:
-      - grafana-piechart-panel
-      - grafana-clock-panel
+    enabled: false
 
   alertmanager:
     enabled: true

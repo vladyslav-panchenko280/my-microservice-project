@@ -36,27 +36,7 @@ kube-prometheus-stack:
         minAvailable: 1
 
   grafana:
-    adminPassword: "stage-admin"
-
-    service:
-      type: LoadBalancer
-      annotations:
-        service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
-        service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
-
-    persistence:
-      enabled: true
-      storageClassName: gp3
-      size: 8Gi
-
-    resources:
-      requests:
-        cpu: 75m
-        memory: 192Mi
-      limits:
-        cpu: 400m
-        memory: 384Mi
-    replicas: 1
+    enabled: false
 
   alertmanager:
     enabled: true

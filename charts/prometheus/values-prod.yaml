@@ -48,56 +48,7 @@ kube-prometheus-stack:
                       - prometheus
               topologyKey: kubernetes.io/hostname
   grafana:
-    adminPassword: "CHANGE_ME_PRODUCTION_PASSWORD"
-
-    service:
-      type: LoadBalancer
-      annotations:
-        service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
-        service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
-
-    persistence:
-      enabled: true
-      storageClassName: gp3
-      size: 15Gi
-
-    resources:
-      requests:
-        cpu: 200m
-        memory: 512Mi
-      limits:
-        cpu: 1000m
-        memory: 1Gi
-
-    replicas: 2
-
-    grafana.ini:
-      server:
-        root_url: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
-      security:
-        admin_user: admin
-        disable_gravatar: true
-        cookie_secure: true
-        cookie_samesite: strict
-      users:
-        allow_sign_up: false
-        auto_assign_org: true
-        auto_assign_org_role: Viewer
-      auth.anonymous:
-        enabled: false
-
-    dashboardProviders:
-      dashboardproviders.yaml:
-        apiVersion: 1
-        providers:
-          - name: 'default'
-            orgId: 1
-            folder: ''
-            type: file
-            disableDeletion: false
-            editable: true
-            options:
-              path: /var/lib/grafana/dashboards/default
+    enabled: false
 
   alertmanager:
     enabled: true
