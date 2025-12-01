@@ -81,7 +81,7 @@ variable "tags" {
 }
 
 variable "single_nat_gateway" {
-  description = "Use a single NAT Gateway for all private subnets (cost optimization for dev)"
+  description = "Use a single NAT Gateway for all private subnets"
   type        = bool
   default     = false
 }
@@ -100,7 +100,7 @@ variable "jenkins_github_token" {
 }
 
 variable "jenkins_admin_password" {
-  description = "Admin password for Jenkins (use only for dev, use secrets for staging/prod)"
+  description = "Admin password for Jenkins"
   type        = string
   sensitive   = true
   default     = "admin123"
@@ -133,7 +133,7 @@ variable "argocd_git_repository_url" {
 }
 
 variable "argocd_admin_password" {
-  description = "Admin password for Argo CD (bcrypt hashed). Generate with: htpasswd -nbBC 10 '' $PASSWORD | tr -d ':\\n' | sed 's/$2y/$2a/'"
+  description = "Admin password for Argo CD (bcrypt hashed)."
   type        = string
   sensitive   = true
   default     = ""
@@ -231,7 +231,7 @@ variable "prometheus_chart_version" {
 }
 
 variable "prometheus_values_file" {
-  description = "Environment-specific values file name (e.g., values-dev.yaml)"
+  description = "Environment-specific values file name"
   type        = string
   default     = ""
 }
@@ -267,7 +267,7 @@ variable "grafana_chart_version" {
 }
 
 variable "grafana_values_file" {
-  description = "Environment-specific values file name for Grafana (e.g., values-dev.yaml)"
+  description = "Environment-specific values file name for Grafana"
   type        = string
   default     = ""
 }
@@ -286,7 +286,7 @@ variable "grafana_admin_user" {
 }
 
 variable "grafana_admin_password" {
-  description = "Admin password for Grafana (use AWS Secrets Manager in production)"
+  description = "Admin password for Grafana"
   type        = string
   sensitive   = true
 }

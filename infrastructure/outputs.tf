@@ -47,7 +47,7 @@ output "jenkins_admin_username" {
 }
 
 output "jenkins_admin_password" {
-  description = "Jenkins admin password (use 'terraform output -raw jenkins_admin_password' to view)"
+  description = "Jenkins admin password"
   value       = module.jenkins.jenkins_admin_password
   sensitive   = true
 }
@@ -73,7 +73,7 @@ output "argocd_admin_username" {
 }
 
 output "argocd_admin_password" {
-  description = "ArgoCD admin password (use 'terraform output -raw argocd_admin_password' to view)"
+  description = "ArgoCD admin password"
   value       = module.argocd.argocd_admin_password
   sensitive   = true
 }
@@ -127,10 +127,11 @@ output "grafana_url" {
 output "grafana_admin_username" {
   description = "Grafana admin username"
   value       = module.grafana.grafana_admin_username
+  sensitive   = true
 }
 
 output "grafana_admin_password" {
-  description = "Grafana admin password (use 'terraform output -raw grafana_admin_password' to view)"
+  description = "Grafana admin password"
   value       = module.grafana.grafana_admin_password
   sensitive   = true
 }

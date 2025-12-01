@@ -50,7 +50,7 @@ variable "jenkins_admin_username" {
 }
 
 variable "jenkins_admin_password" {
-  description = "Admin password for Jenkins (use for dev only, use secrets for staging/prod)"
+  description = "Admin password for Jenkins"
   type        = string
   sensitive   = true
   default     = "admin123"

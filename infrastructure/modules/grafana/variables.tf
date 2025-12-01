@@ -22,7 +22,7 @@ variable "chart_version" {
 }
 
 variable "values_file" {
-  description = "Environment-specific values file name (e.g., values-dev.yaml)"
+  description = "Environment-specific values file name"
   type        = string
   default     = ""
 }
@@ -41,7 +41,7 @@ variable "grafana_admin_user" {
 }
 
 variable "grafana_admin_password" {
-  description = "Admin password for Grafana (use AWS Secrets Manager in production)"
+  description = "Admin password for Grafana"
   type        = string
   sensitive   = true
 }
