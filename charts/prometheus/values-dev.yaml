@@ -1,0 +1,118 @@
+environment: dev
+
+kube-prometheus-stack:
+  prometheus:
+    service:
+      type: NodePort
+
+    prometheusSpec:
+      retention: 7d
+      retentionSize: "20GB"
+
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: gp3
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 20Gi
+
+      resources:
+        requests:
+          cpu: 200m
+          memory: 1Gi
+        limits:
+          cpu: 1000m
+          memory: 2Gi
+
+      scrapeInterval: 15s
+      evaluationInterval: 15s
+
+      podDisruptionBudget:
+        enabled: false
+
+  grafana:
+    adminPassword: "dev-admin"
+
+    service:
+      type: NodePort
+
+    persistence:
+      enabled: true
+      storageClassName: gp3
+      size: 5Gi
+
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+
+  alertmanager:
+    enabled: true
+
+    alertmanagerSpec:
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: gp3
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 2Gi
+
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+      retention: 24h
+
+    config:
+      global:
+        resolve_timeout: 5m
+
+      route:
+        group_by: ['alertname']
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 24h
+        receiver: 'dev-null'
+
+      receivers:
+        - name: 'dev-null'
+
+  prometheus-node-exporter:
+    resources:
+      requests:
+        cpu: 25m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+
+  kube-state-metrics:
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+
+  prometheusOperator:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+namespace: monitoring

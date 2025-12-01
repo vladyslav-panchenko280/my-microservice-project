@@ -1,0 +1,139 @@
+environment: stage
+
+kube-prometheus-stack:
+  prometheus:
+    service:
+      type: LoadBalancer
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+        service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
+
+    prometheusSpec:
+      retention: 15d
+      retentionSize: "40GB"
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: gp3
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 40Gi
+
+      resources:
+        requests:
+          cpu: 400m
+          memory: 1.5Gi
+        limits:
+          cpu: 1500m
+          memory: 3Gi
+
+      scrapeInterval: 30s
+      evaluationInterval: 30s
+      replicas: 2
+      podDisruptionBudget:
+        enabled: true
+        minAvailable: 1
+
+  grafana:
+    adminPassword: "stage-admin"
+
+    service:
+      type: LoadBalancer
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+        service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
+
+    persistence:
+      enabled: true
+      storageClassName: gp3
+      size: 8Gi
+
+    resources:
+      requests:
+        cpu: 75m
+        memory: 192Mi
+      limits:
+        cpu: 400m
+        memory: 384Mi
+    replicas: 1
+
+  alertmanager:
+    enabled: true
+
+    service:
+      type: ClusterIP
+
+    alertmanagerSpec:
+      replicas: 2
+
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: gp3
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 4Gi
+
+      resources:
+        requests:
+          cpu: 75m
+          memory: 96Mi
+        limits:
+          cpu: 150m
+          memory: 192Mi
+      retention: 72h
+
+    config:
+      global:
+        resolve_timeout: 5m
+
+      route:
+        group_by: ['alertname', 'cluster', 'service']
+        group_wait: 10s
+        group_interval: 10s
+        repeat_interval: 12h
+        receiver: 'stage-alerts'
+        routes:
+          - match:
+              severity: critical
+            receiver: 'stage-critical'
+            continue: true
+          - match:
+              alertname: Watchdog
+            receiver: 'null'
+
+      receivers:
+        - name: 'null'
+        - name: 'stage-alerts'
+        - name: 'stage-critical'
+
+  prometheus-node-exporter:
+    resources:
+      requests:
+        cpu: 40m
+        memory: 48Mi
+      limits:
+        cpu: 150m
+        memory: 96Mi
+
+  kube-state-metrics:
+    resources:
+      requests:
+        cpu: 40m
+        memory: 96Mi
+      limits:
+        cpu: 150m
+        memory: 192Mi
+
+  prometheusOperator:
+    resources:
+      requests:
+        cpu: 75m
+        memory: 96Mi
+      limits:
+        cpu: 400m
+        memory: 384Mi
+
+namespace: monitoring

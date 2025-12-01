@@ -47,7 +47,6 @@ pipeline {
         stage('Determine Environment') {
             steps {
                 script {
-                    // Determine environment based on branch
                     def branch = env.BRANCH_NAME ?: sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
 
                     if (branch == 'main') {

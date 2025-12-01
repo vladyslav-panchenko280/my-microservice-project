@@ -70,6 +70,14 @@ autoscaling:
   maxReplicas: 6
   targetCPUUtilizationPercentage: 70
 
+prometheus:
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    path: /metrics
+    labels: {}
+    annotations: {}
+
 configMap:
   data: {}
 

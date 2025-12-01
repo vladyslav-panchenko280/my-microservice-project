@@ -1,0 +1,28 @@
+{{- if .Values.prometheus.serviceMonitor.enabled -}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "django-app.fullname" . }}
+  namespace: monitoring
+  labels:
+    {{- include "django-app.labels" . | nindent 4 }}
+    {{- with .Values.prometheus.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.prometheus.serviceMonitor.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "django-app.selectorLabels" . | nindent 6 }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+    - port: http
+      path: {{ .Values.prometheus.serviceMonitor.path }}
+      interval: {{ .Values.prometheus.serviceMonitor.interval }}
+      scheme: http
+{{- end }}

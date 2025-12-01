@@ -23,6 +23,12 @@ resources:
 autoscaling:
   enabled: false
 
+prometheus:
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    path: /metrics
+
 configMap:
   data:
     DJANGO_SETTINGS_MODULE: django_app.settings
