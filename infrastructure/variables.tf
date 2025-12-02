@@ -81,7 +81,7 @@ variable "tags" {
 }
 
 variable "single_nat_gateway" {
-  description = "Use a single NAT Gateway for all private subnets (cost optimization for dev)"
+  description = "Use a single NAT Gateway for all private subnets"
   type        = bool
   default     = false
 }
@@ -100,7 +100,7 @@ variable "jenkins_github_token" {
 }
 
 variable "jenkins_admin_password" {
-  description = "Admin password for Jenkins (use only for dev, use secrets for staging/prod)"
+  description = "Admin password for Jenkins"
   type        = string
   sensitive   = true
   default     = "admin123"
@@ -133,7 +133,7 @@ variable "argocd_git_repository_url" {
 }
 
 variable "argocd_admin_password" {
-  description = "Admin password for Argo CD (bcrypt hashed). Generate with: htpasswd -nbBC 10 '' $PASSWORD | tr -d ':\\n' | sed 's/$2y/$2a/'"
+  description = "Admin password for Argo CD (bcrypt hashed)."
   type        = string
   sensitive   = true
   default     = ""
@@ -211,5 +211,95 @@ variable "db_parameters" {
   default = {
     log_min_duration_statement = "500"
   }
+}
+variable "prometheus_namespace" {
+  description = "Kubernetes namespace for Prometheus stack"
+  type        = string
+  default     = "monitoring"
+}
+
+variable "prometheus_release_name" {
+  description = "Helm release name for Prometheus"
+  type        = string
+  default     = "prometheus"
+}
+
+variable "prometheus_chart_version" {
+  description = "Version of kube-prometheus-stack Helm chart"
+  type        = string
+  default     = "55.5.0"
+}
+
+variable "prometheus_values_file" {
+  description = "Environment-specific values file name"
+  type        = string
+  default     = ""
+}
+
+variable "prometheus_storage_class" {
+  description = "Storage class for Prometheus persistent volumes"
+  type        = string
+  default     = "gp3"
+}
+
+variable "prometheus_set_values" {
+  description = "Additional Helm chart values to set for Prometheus"
+  type        = map(string)
+  default     = {}
+}
+
+variable "grafana_namespace" {
+  description = "Kubernetes namespace for Grafana"
+  type        = string
+  default     = "monitoring"
+}
+
+variable "grafana_release_name" {
+  description = "Helm release name for Grafana"
+  type        = string
+  default     = "grafana"
+}
+
+variable "grafana_chart_version" {
+  description = "Version of Grafana Helm chart"
+  type        = string
+  default     = "7.0.8"
+}
+
+variable "grafana_values_file" {
+  description = "Environment-specific values file name for Grafana"
+  type        = string
+  default     = ""
+}
+
+variable "grafana_storage_class" {
+  description = "Storage class for Grafana persistent volumes"
+  type        = string
+  default     = "gp3"
+}
+
+variable "grafana_admin_user" {
+  description = "Admin username for Grafana"
+  type        = string
+  sensitive   = true
+  default     = "admin"
+}
+
+variable "grafana_admin_password" {
+  description = "Admin password for Grafana"
+  type        = string
+  sensitive   = true
+}
+
+variable "grafana_prometheus_url" {
+  description = "Prometheus server URL for Grafana data source"
+  type        = string
+  default     = "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
+}
+
+variable "grafana_set_values" {
+  description = "Additional Helm chart values to set for Grafana"
+  type        = map(string)
+  default     = {}
 }
 

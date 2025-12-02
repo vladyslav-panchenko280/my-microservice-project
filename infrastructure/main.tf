@@ -86,6 +86,47 @@ module "argocd" {
   }
 }
 
+module "prometheus" {
+  source        = "./modules/prometheus"
+  environment   = var.environment
+  namespace     = var.prometheus_namespace
+  release_name  = var.prometheus_release_name
+  chart_version = var.prometheus_chart_version
+  values_file   = var.prometheus_values_file
+  storage_class = var.prometheus_storage_class
+  set_values    = var.prometheus_set_values
+  tags          = var.tags
+
+  providers = {
+    kubernetes = kubernetes
+    helm       = helm
+  }
+
+  depends_on = [module.eks]
+}
+
+module "grafana" {
+  source                 = "./modules/grafana"
+  environment            = var.environment
+  namespace              = var.grafana_namespace
+  release_name           = var.grafana_release_name
+  chart_version          = var.grafana_chart_version
+  values_file            = var.grafana_values_file
+  storage_class          = var.grafana_storage_class
+  grafana_admin_user     = var.grafana_admin_user
+  grafana_admin_password = var.grafana_admin_password
+  prometheus_url         = var.grafana_prometheus_url
+  set_values             = var.grafana_set_values
+  tags                   = var.tags
+
+  providers = {
+    kubernetes = kubernetes
+    helm       = helm
+  }
+
+  depends_on = [module.eks, module.prometheus]
+}
+
 module "rds" {
   source = "./modules/rds"
 

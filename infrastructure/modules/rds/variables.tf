@@ -1,5 +1,5 @@
 variable "name" {
-  description = "Назва інстансу або кластера"
+  description = "The name of instance or cluster"
   type        = string
 }
 
@@ -79,10 +79,10 @@ variable "db_parameters" {
   type = object({
     max_connections = optional(number, 100)
     log_statement   = optional(string, "all")
-    work_mem        = optional(string, "4MB")
+    work_mem        = optional(string, "4096")
   })
-  default = {}
-  description = "Database parameters for tuning performance and logging"
+  default     = {}
+  description = "Database parameters for tuning performance and logging (work_mem is in KB)"
 }
 
 variable "use_aurora" {

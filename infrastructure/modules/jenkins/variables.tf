@@ -43,8 +43,14 @@ variable "chart_version" {
   default     = "0.1.0"
 }
 
+variable "jenkins_admin_username" {
+  description = "Admin username for Jenkins"
+  type        = string
+  default     = "admin"
+}
+
 variable "jenkins_admin_password" {
-  description = "Admin password for Jenkins (use for dev only, use secrets for staging/prod)"
+  description = "Admin password for Jenkins"
   type        = string
   sensitive   = true
   default     = "admin123"

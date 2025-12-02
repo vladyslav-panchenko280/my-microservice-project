@@ -140,6 +140,7 @@ resource "helm_release" "jenkins" {
       jenkins = {
         controller = {
           admin = {
+            username = var.jenkins_admin_username
             password = var.jenkins_admin_password
           }
           containerEnv = [

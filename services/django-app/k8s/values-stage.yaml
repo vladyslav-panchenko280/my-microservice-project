@@ -26,6 +26,12 @@ autoscaling:
   maxReplicas: 6
   targetCPUUtilizationPercentage: 70
 
+prometheus:
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    path: /metrics
+
 configMap:
   data:
     DJANGO_SETTINGS_MODULE: django_app.settings

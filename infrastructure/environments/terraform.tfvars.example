@@ -49,7 +49,15 @@ db_backup_retention_period = 7                        # Days to retain backups
 db_parameters = {
   max_connections = 100
   log_statement   = "all"
-  work_mem        = "4MB"}
+  work_mem        = "4096"}
+
+prometheus_namespace        = "monitoring"
+prometheus_release_name     = "prometheus"
+prometheus_chart_version    = "55.5.0"
+prometheus_values_file      = "values-dev.yaml"
+prometheus_storage_class    = "gp3"
+prometheus_grafana_password = "dev-admin"
+prometheus_set_values       = {}
 
 # Tags
 tags = {
